@@ -563,7 +563,7 @@ public class Game extends GameCore implements ActionListener
         }
 
         // Calculate camera offsets based on player position.
-        int xo = (int) -player.getX() + 100;
+        int xo = (int) -player.getX() + 150;
         int yo = (int) -player.getY() + 250;
 
         // Draw background tiles (parallax background, moves slower than foreground).
@@ -786,7 +786,8 @@ public class Game extends GameCore implements ActionListener
                 tmap.getTileChar(tileX, tileY) == 'L' || tmap.getTileChar(tileX, tileY) == 'R' ||
                 tmap.getTileChar(tileX, tileY) == 'Q' || tmap.getTileChar(tileX, tileY) == 'W' ||
                 tmap.getTileChar(tileX, tileY) == ']' || tmap.getTileChar(tileX, tileY) == '\\' ||
-                tmap.getTileChar(tileX, tileY) == '/') // If touching ground tile
+                tmap.getTileChar(tileX, tileY) == '/' || tmap.getTileChar(tileX, tileY) == '<' ||
+                tmap.getTileChar(tileX, tileY) == '-' || tmap.getTileChar(tileX, tileY) == '>') // If touching ground tile
         {
             if (s.getVelocityY() > 0) // resets Y velocity to prevent falling through the ground
             {
@@ -881,7 +882,7 @@ public class Game extends GameCore implements ActionListener
 //            tmap.setTileChar('.', tileX, tileY - 1);
 //        }
 
-        if (gemsCollected == totalGems) // Once the player has collected half of the gems
+        if (gemsCollected == 1) // Once the player has collected half of the gems
         {
             portalState = ("Open"); // Set portal state to open
             portal.show(); // Show the portal
@@ -926,8 +927,9 @@ public class Game extends GameCore implements ActionListener
                 tmap.getTileChar(xT, yT) == 'B' || tmap.getTileChar(xT, yT) == 'D' ||
                 tmap.getTileChar(xT, yT) == 'L' || tmap.getTileChar(xT, yT) == 'R' ||
                 tmap.getTileChar(xT, yT) == 'Q' || tmap.getTileChar(xT, yT) == 'W' ||
-                tmap.getTileChar(xR, yR) == ']' || tmap.getTileChar(xT, yT) == '\\' ||
-                tmap.getTileChar(xT, yT) == '/') &&
+                tmap.getTileChar(xT, yT) == ']' || tmap.getTileChar(xT, yT) == '\\' ||
+                tmap.getTileChar(xT, yT) == '/' || tmap.getTileChar(xT, yT) == '<' ||
+                tmap.getTileChar(xT, yT) == '-' || tmap.getTileChar(xT, yT) == '>') &&
                 sprite.getVelocityY() > 0) {
             sprite.setVelocityY(0); // stop the player
             canJump = false; // prevents the player from being able to jump when right below a block; and from clipping out of the map
@@ -942,7 +944,8 @@ public class Game extends GameCore implements ActionListener
                 tmap.getTileChar(xR, yR) == 'L' || tmap.getTileChar(xR, yR) == 'R' ||
                 tmap.getTileChar(xR, yR) == 'Q' || tmap.getTileChar(xR, yR) == 'W' ||
                 tmap.getTileChar(xR, yR) == ']' || tmap.getTileChar(xR, yR) == '\\' ||
-                tmap.getTileChar(xR, yR) == '/') &&
+                tmap.getTileChar(xR, yR) == '/' || tmap.getTileChar(xR, yR) == '<' ||
+                tmap.getTileChar(xR, yR) == '-' || tmap.getTileChar(xR, yR) == '>') &&
                 sprite.getVelocityX() > 0) {
             sprite.setVelocityX(0); // stop player
             sprite.setX(xR * tmap.getTileWidth() - sprite.getImage().getWidth(null));
@@ -952,8 +955,9 @@ public class Game extends GameCore implements ActionListener
                 tmap.getTileChar(xL, yL) == 'B' || tmap.getTileChar(xL, yL) == 'D' ||
                 tmap.getTileChar(xL, yL) == 'L' || tmap.getTileChar(xL, yL) == 'R' ||
                 tmap.getTileChar(xL, yL) == 'Q' || tmap.getTileChar(xL, yL) == 'W' ||
-                tmap.getTileChar(xR, yR) == ']' || tmap.getTileChar(xL, yL) == '\\' ||
-                tmap.getTileChar(xL, yL) == '/') &&
+                tmap.getTileChar(xL, yL) == ']' || tmap.getTileChar(xL, yL) == '\\' ||
+                tmap.getTileChar(xL, yL) == '/' || tmap.getTileChar(xL, yL) == '<' ||
+                tmap.getTileChar(xL, yL) == '-' || tmap.getTileChar(xL, yL) == '>') &&
                 sprite.getVelocityX() < 0) {
             sprite.setVelocityX(0); // stop player
             sprite.setX(xL * tmap.getTileWidth() + tmap.getTileWidth());
@@ -963,8 +967,9 @@ public class Game extends GameCore implements ActionListener
                 tmap.getTileChar(xB, yB) == 'B' || tmap.getTileChar(xB, yB) == 'D' ||
                 tmap.getTileChar(xB, yB) == 'L' || tmap.getTileChar(xB, yB) == 'R' ||
                 tmap.getTileChar(xB, yB) == 'Q' || tmap.getTileChar(xB, yB) == 'W' ||
-                tmap.getTileChar(xR, yR) == ']' || tmap.getTileChar(xB, yB) == '\\' ||
-                tmap.getTileChar(xB, yB) == '/') {
+                tmap.getTileChar(xB, yB) == ']' || tmap.getTileChar(xB, yB) == '\\' ||
+                tmap.getTileChar(xB, yB) == '/' || tmap.getTileChar(xB, yB) == '<' ||
+                tmap.getTileChar(xB, yB) == '-' || tmap.getTileChar(xB, yB) == '>') {
             sprite.setVelocityY(0); // stop player
             sprite.shiftY(2); // move them up a little bit
         }
