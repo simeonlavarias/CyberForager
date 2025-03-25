@@ -213,8 +213,8 @@ public class Game extends GameCore implements ActionListener
 
             totalGems = 20;
 
-            player.setX(tmap.getTileXC(3, 12)); // get x & y coordinates of this tile
-            player.setY(tmap.getTileYC(3, 12));
+            player.setX(tmap.getTileXC(1, 12)); // get x & y coordinates of this tile
+            player.setY(tmap.getTileYC(1, 12));
             player.setVelocityX(0); // set velocities to 0
             player.setVelocityY(0);
 
