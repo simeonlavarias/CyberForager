@@ -128,6 +128,14 @@ public class Game extends GameCore implements ActionListener
      */
     public static void main(String[] args) throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
     {
+
+//        Game game = new Game(); // Create a new instance of Game
+//
+//        game.levelNumber = 2; // Start directly on level 2
+//        game.init("level2/level2.txt"); // Load level 2
+//        game.State = Game.STATE.GAME; // Go directly to gameplay state
+//        game.initialiseGame(); // Initialize level data
+
         Game game = new Game(); // Create a new instance of Game
         game.init("level1/level1.txt"); // load the first map
 //        Sound theme = new Sound("sounds/theme.wav"); // load theme
@@ -205,34 +213,35 @@ public class Game extends GameCore implements ActionListener
 
             totalGems = 20;
 
-            player.setX(tmap.getTileXC(3, 6)); // get x & y coordinates of this tile
-            player.setY(tmap.getTileYC(3, 6));
+            player.setX(tmap.getTileXC(3, 12)); // get x & y coordinates of this tile
+            player.setY(tmap.getTileYC(3, 12));
             player.setVelocityX(0); // set velocities to 0
             player.setVelocityY(0);
 
-            // Enemy 1
-            enemy1.setSpawnX(tmap.getTileXC(11, 3));
-            enemy1.setSpawnY(tmap.getTileYC(11, 3));
-            enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
-            enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
+            // Enemy 1 - Top platform (Row 1, Col 15)
+            enemy1.setSpawnX(tmap.getTileXC(5, 12));
+            enemy1.setSpawnY(tmap.getTileYC(5, 12));
+            enemy1.setMinPatrol(enemy1.getSpawnX() - 10);
+            enemy1.setMaxPatrol(enemy1.getSpawnX() + 10);
 
-            // Enemy 2 - Middle platform near "/TGT\"
-            enemy2.setSpawnX(tmap.getTileXC(20, 3));
-            enemy2.setSpawnY(tmap.getTileYC(20, 3));
-            enemy2.setMinPatrol(enemy2.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy2.setMaxPatrol(enemy2.getSpawnX() + 10);  // Moves 10 tiles right
+            // Enemy 2 - Middle platform (Row 4, Col 10)
+            enemy2.setSpawnX(tmap.getTileXC(23, 1));
+            enemy2.setSpawnY(tmap.getTileYC(23, 1));
+            enemy2.setMinPatrol(enemy2.getSpawnX() - 10);
+            enemy2.setMaxPatrol(enemy2.getSpawnX() + 10);
 
-            // Enemy 3 - Ground near "LDDDR"
-            enemy3.setSpawnX(tmap.getTileXC(16, 7));
-            enemy3.setSpawnY(tmap.getTileYC(16, 7));
-            enemy3.setMinPatrol(enemy3.getSpawnX() - 15);  // Moves 20 tiles left
-            enemy3.setMaxPatrol(enemy3.getSpawnX() + 15);  // Moves 20 tiles right
+            // Enemy 3 - Lower-mid platform (Row 7, Col 5)
+            enemy3.setSpawnX(tmap.getTileXC(41, 7));
+            enemy3.setSpawnY(tmap.getTileYC(41, 7));
+            enemy3.setMinPatrol(enemy3.getSpawnX() - 10);
+            enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);
 
-            // Enemy 4 - Far right near the bottom
-            enemy4.setSpawnX(tmap.getTileXC(36, 17));
-            enemy4.setSpawnY(tmap.getTileYC(36, 17));
-            enemy4.setMinPatrol(enemy4.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
+            // Enemy 4 - Bottom platform (Row 13, Col 38)
+            enemy4.setSpawnX(tmap.getTileXC(53, 15));
+            enemy4.setSpawnY(tmap.getTileYC(53, 15));
+            enemy4.setMinPatrol(enemy4.getSpawnX() - 10);
+            enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);
+
 
             portal.setX(tmap.getTileXC(61, 3));
             portal.setY(tmap.getTileYC(61, 3));
@@ -564,7 +573,7 @@ public class Game extends GameCore implements ActionListener
 
         // Calculate camera offsets based on player position.
         int xo = (int) -player.getX() + 150;
-        int yo = (int) -player.getY() + 250;
+        int yo = (int) -player.getY() + 200;
 
         // Draw background tiles (parallax background, moves slower than foreground).
         for (int y = 0; y < tmap.getMapHeight(); y += overlay.getHeight(null)) {
