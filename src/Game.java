@@ -130,15 +130,15 @@ public class Game extends GameCore implements ActionListener
     public static void main(String[] args) throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
     {
 
-        Game game = new Game(); // Create a new instance of Game
-
-        game.levelNumber = 2; // Start directly on level 2
-        game.init("level2/level2.txt"); // Load level 2
-        game.State = Game.STATE.GAME; // Go directly to gameplay state
-        game.initialiseGame(); // Initialize level data
-
 //        Game game = new Game(); // Create a new instance of Game
-//        game.init("level1/level1.txt"); // load the first map
+//
+//        game.levelNumber = 2; // Start directly on level 2
+//        game.init("level2/level2.txt"); // Load level 2
+//        State = Game.STATE.GAME; // Go directly to gameplay state
+//        game.initialiseGame(); // Initialize level data
+
+        Game game = new Game(); // Create a new instance of Game
+        game.init("level1/level1.txt"); // load the first map
 //        Sound theme = new Sound("sounds/theme.wav"); // load theme
 //        theme.playTheme(); // play theme
         // Start in windowed mode with the given screen height and width
@@ -398,7 +398,7 @@ public class Game extends GameCore implements ActionListener
             // Check for tile map collisions
             for (Sprite s : sprites)
             {
-                handleTileMapCollisions(s, elapsed);
+                handleTileMapCollisions(s);
             }
             // Check for sprite collisions
             handleSpriteCollisions();
@@ -470,7 +470,7 @@ public class Game extends GameCore implements ActionListener
 
     private void moveLeft() {
         postX = player.getX() + player.getImage().getWidth(null);
-        postY = player.getY() + player.getImage().getHeight(null) / 2;
+        postY = player.getY() + (float) player.getImage().getHeight(null) / 2;
 
         if (isWallBlocking(postX - 0.02f, postY)) {
             player.setVelocityX(0);
@@ -483,7 +483,7 @@ public class Game extends GameCore implements ActionListener
 
     private void moveRight() {
         postX = player.getX() + player.getImage().getWidth(null);
-        postY = player.getY() + player.getImage().getHeight(null) / 2;
+        postY = player.getY() + (float) player.getImage().getHeight(null) / 2;
 
         if (isWallBlocking(postX + 0.02f, postY)) {
             player.setVelocityX(0);
@@ -738,9 +738,8 @@ public class Game extends GameCore implements ActionListener
      * given sprite 's'. Initial functionality is limited...
      *
      * @param s       The Sprite to check collisions for
-     * @param elapsed How much time has gone by
      */
-    public void handleTileMapCollisions(Sprite s, long elapsed)
+    public void handleTileMapCollisions(Sprite s)
     {
         // get the x and y position (in tiles)
         // the x position of the tile (in tiles)
@@ -778,14 +777,14 @@ public class Game extends GameCore implements ActionListener
         if (tmap.getTileChar(tileX, tileY - 1) == '/') // If on a top left slope
         {
             s.setVelocityY(0);
-            s.setY(yc - 16 - (xcc / 2));
+            s.setY(yc - 16 - ((float) xcc / 2));
             s.setVelocityY(0);
         }
 
         if (tmap.getTileChar(tileX, tileY - 1) == '\\') // If on a top right slope
         {
             s.setVelocityY(0);
-            s.setY(yc - 16 - (16 - (xcc / 2)));
+            s.setY(yc - 16 - (16 - ((float) xcc / 2)));
             s.setVelocityY(0);
         }
 
@@ -825,34 +824,6 @@ public class Game extends GameCore implements ActionListener
             gemsCollected++; // increment gems collected by the appropriate value
             tmap.setTileChar('.', tileX, tileY - 1); // Replace the gem with an empty space
         }
-//        if ((tmap.getTileChar(tileX, tileY - 1) == '2') && s.equals(player)) // If red gem touched
-//        {
-//            Sound collect = new Sound("sounds/collect1.wav");
-//            collect.start();
-//            gemsCollected = gemsCollected + 2;
-//            tmap.setTileChar('.', tileX, tileY - 1);
-//        }
-//        if ((tmap.getTileChar(tileX, tileY - 1) == '3') && s.equals(player)) // If blue gem touched
-//        {
-//            Sound collect = new Sound("sounds/collect1.wav");
-//            collect.start();
-//            gemsCollected = gemsCollected + 3;
-//            tmap.setTileChar('.', tileX, tileY - 1);
-//        }
-//        if ((tmap.getTileChar(tileX, tileY - 1) == '4') && s.equals(player)) // If purple gem touched
-//        {
-//            Sound collect = new Sound("sounds/collect1.wav");
-//            collect.start();
-//            gemsCollected = gemsCollected + 4;
-//            tmap.setTileChar('.', tileX, tileY - 1);
-//        }
-//        if ((tmap.getTileChar(tileX, tileY - 1) == '5') && s.equals(player)) // If white gem touched
-//        {
-//            Sound collect = new Sound("sounds/collect1.wav");
-//            collect.start();
-//            gemsCollected = gemsCollected + 5;
-//            tmap.setTileChar('.', tileX, tileY - 1);
-//        }
 
         if (gemsCollected == 1) // Once the player has collected half of the gems
         {
@@ -997,7 +968,7 @@ public class Game extends GameCore implements ActionListener
 
             if ((BoundingCircleCollision(player, portal)) && portalState.equals("Open"))  // if the player has touched the green flag and enough gems are collected
             {
-                Sound levelComplete = new Sound("sounds/level_done.wav"); // Load level complete sound
+                Sound levelComplete = new Sound("sounds/level_transition.wav"); // Load level complete sound
                 levelComplete.start(); // start thread
                 finishLevel(); // call the finishLevel() method
             }
@@ -1061,12 +1032,6 @@ public class Game extends GameCore implements ActionListener
                 init("level2/level2.txt");
                 initialiseGame();
             }
-
-//            if (key == KeyEvent.VK_3) {
-//                levelNumber = 3;
-//                init("map3.txt");
-//                initialiseGame();
-//            }
 
             if (key == KeyEvent.VK_Q) {
                 State = STATE.MENU;
