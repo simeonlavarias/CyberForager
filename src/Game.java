@@ -72,7 +72,8 @@ public class Game extends GameCore implements ActionListener
     private Animation enemy_running_right;
     private Animation attack_right;
     private Animation attack_left;
-    private Animation portalAnim;
+    private Animation portalAnimLevel1;
+    private Animation portalAnimLevel2;
 
 
     // Sprites
@@ -129,15 +130,15 @@ public class Game extends GameCore implements ActionListener
     public static void main(String[] args) throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
     {
 
-//        Game game = new Game(); // Create a new instance of Game
-//
-//        game.levelNumber = 2; // Start directly on level 2
-//        game.init("level2/level2.txt"); // Load level 2
-//        game.State = Game.STATE.GAME; // Go directly to gameplay state
-//        game.initialiseGame(); // Initialize level data
-
         Game game = new Game(); // Create a new instance of Game
-        game.init("level1/level1.txt"); // load the first map
+
+        game.levelNumber = 2; // Start directly on level 2
+        game.init("level2/level2.txt"); // Load level 2
+        game.State = Game.STATE.GAME; // Go directly to gameplay state
+        game.initialiseGame(); // Initialize level data
+
+//        Game game = new Game(); // Create a new instance of Game
+//        game.init("level1/level1.txt"); // load the first map
 //        Sound theme = new Sound("sounds/theme.wav"); // load theme
 //        theme.playTheme(); // play theme
         // Start in windowed mode with the given screen height and width
@@ -197,6 +198,7 @@ public class Game extends GameCore implements ActionListener
             enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
 
             // set the spawn points of the red and green flag (start and finish)
+            portal.setAnimation(portalAnimLevel1);
             portal.setX(tmap.getTileXC(61, 1));
             portal.setY(tmap.getTileYC(61, 1));
         }
@@ -242,50 +244,10 @@ public class Game extends GameCore implements ActionListener
             enemy4.setMinPatrol(enemy4.getSpawnX() - 10);
             enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);
 
-
-            portal.setX(tmap.getTileXC(61, 3));
-            portal.setY(tmap.getTileYC(61, 3));
+            portal.setAnimation(portalAnimLevel2);
+            portal.setX(tmap.getTileXC(31, 11));
+            portal.setY(tmap.getTileYC(31, 11));
         }
-//        else if (levelNumber == 3) // if on level 3
-//        {
-//            // similar setup as above
-//
-//            // Load the tile map and print it out so we can check it is valid
-//            tmap.loadMap("maps", "map3.txt");
-//
-//            totalGems = 46;
-//
-//            player.setX(tmap.getTileXC(2, 9));
-//            player.setY(tmap.getTileYC(2, 9));
-//            player.setVelocityX(0);
-//            player.setVelocityY(0);
-//
-//            enemy1.setSpawnX(tmap.getTileXC(5, 5));
-//            enemy2.setSpawnX(tmap.getTileXC(16, 20));
-//            enemy3.setSpawnX(tmap.getTileXC(12, 5));
-//            enemy4.setSpawnX(tmap.getTileXC(54, 20));
-//
-//            enemy1.setMaxPatrol(enemy1.getSpawnX() + 50);
-//            enemy2.setMaxPatrol(enemy2.getSpawnX() + 120);
-//            enemy3.setMaxPatrol(enemy3.getSpawnX() + 40);
-//            enemy4.setMaxPatrol(enemy4.getSpawnX() + 50);
-//
-//            enemy1.setMinPatrol(enemy1.getSpawnX() - 30);
-//            enemy2.setMinPatrol(enemy2.getSpawnX() - 200);
-//            enemy3.setMinPatrol(enemy3.getSpawnX() - 50);
-//            enemy4.setMinPatrol(enemy4.getSpawnX() - 80);
-//
-//            enemy1.setSpawnY(tmap.getTileYC(5, 5));
-//            enemy2.setSpawnY(tmap.getTileYC(16, 20));
-//            enemy3.setSpawnY(tmap.getTileYC(12, 10));
-//            enemy4.setSpawnY(tmap.getTileYC(54, 20));
-//
-//            flag_red.setX(tmap.getTileXC(2, 8));
-//            flag_red.setY(tmap.getTileYC(2, 8));
-//
-//            flag_green.setX(tmap.getTileXC(61, 3));
-//            flag_green.setY(tmap.getTileYC(61, 3));
-//        }
     }
 
     /**
@@ -328,7 +290,8 @@ public class Game extends GameCore implements ActionListener
         enemy_running_right = loadAnimation("anim_enemy_running_right.png", 8, 400);
 
         // === Portal Animations ===
-        portalAnim = loadAnimation("portal.png", 9, 50);
+        portalAnimLevel1 = loadAnimation("portal1.png", 9, 50);
+        portalAnimLevel2 = loadAnimation("portal2.png", 8, 50);
 
         // === Initialize Sprites ===
         player = new Sprite(standing_right);
@@ -336,7 +299,7 @@ public class Game extends GameCore implements ActionListener
         enemy2 = new Sprite(enemy_running_right);
         enemy3 = new Sprite(enemy_running_right);
         enemy4 = new Sprite(enemy_running_right);
-        portal = new Sprite(portalAnim);
+        portal = new Sprite(portalAnimLevel1);
 
         // === Initialize Screens ===
         menu = new Menu();
