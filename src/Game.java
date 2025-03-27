@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import javax.sound.midi.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -37,7 +38,7 @@ public class Game extends GameCore implements ActionListener
     public int getScreenHeight() {
         return screenHeight;
     }
-    private final float lift = 0.005f; // lift (counteracts gravity)
+    private Sequencer midiSequencer;
 
     // Game state flags
     private boolean jump = false;
@@ -139,6 +140,21 @@ public class Game extends GameCore implements ActionListener
 
         Game game = new Game(); // Create a new instance of Game
         game.init("level1/level1.txt"); // load the first map
+        try {
+            game.midiSequencer = MidiSystem.getSequencer();
+            game.midiSequencer.open();
+            Sequence theme = MidiSystem.getSequence(new File("sounds/theme.mid")); // Your MIDI file
+            game.midiSequencer.setSequence(theme);
+            game.midiSequencer.setLoopCount(Sequencer.LOOP_CONTINUOUSLY); // Loop indefinitely
+            game.midiSequencer.start(); // Start playback
+            new Sound("sounds/game_start.wav").start(); // This plays immediately after the theme starts
+        } catch (MidiUnavailableException | IOException | InvalidMidiDataException e) {
+            e.printStackTrace();
+        }
+
+//        game.themeMusic = new Sound("sounds/theme.wav"); // Load theme music
+        //game.themeMusic.loop(); // Loop the music continuously
+
 //        Sound theme = new Sound("sounds/theme.wav"); // load theme
 //        theme.playTheme(); // play theme
         // Start in windowed mode with the given screen height and width
@@ -174,28 +190,22 @@ public class Game extends GameCore implements ActionListener
             player.setVelocityY(0);
 
             // Enemy 1
-            enemy1.setSpawnX(tmap.getTileXC(11, 3));
-            enemy1.setSpawnY(tmap.getTileYC(11, 3));
+            enemy1.setSpawnX(tmap.getTileXC(11, 4));
+            enemy1.setSpawnY(tmap.getTileYC(11, 4));
             enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
             enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
-            // Enemy 2 - Middle platform near "/TGT\"
-            enemy2.setSpawnX(tmap.getTileXC(20, 3));
-            enemy2.setSpawnY(tmap.getTileYC(20, 3));
-            enemy2.setMinPatrol(enemy2.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy2.setMaxPatrol(enemy2.getSpawnX() + 10);  // Moves 10 tiles right
-
             // Enemy 3 - Ground near "LDDDR"
-            enemy3.setSpawnX(tmap.getTileXC(16, 7));
-            enemy3.setSpawnY(tmap.getTileYC(16, 7));
-            enemy3.setMinPatrol(enemy3.getSpawnX() - 15);  // Moves 20 tiles left
-            enemy3.setMaxPatrol(enemy3.getSpawnX() + 15);  // Moves 20 tiles right
+            enemy2.setSpawnX(tmap.getTileXC(16, 8));
+            enemy2.setSpawnY(tmap.getTileYC(16, 8));
+            enemy2.setMinPatrol(enemy3.getSpawnX() - 15);  // Moves 20 tiles left
+            enemy2.setMaxPatrol(enemy3.getSpawnX() + 15);  // Moves 20 tiles right
 
             // Enemy 4 - Far right near the bottom
-            enemy4.setSpawnX(tmap.getTileXC(36, 17));
-            enemy4.setSpawnY(tmap.getTileYC(36, 17));
-            enemy4.setMinPatrol(enemy4.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
+            enemy3.setSpawnX(tmap.getTileXC(36, 17));
+            enemy3.setSpawnY(tmap.getTileYC(36, 17));
+            enemy3.setMinPatrol(enemy4.getSpawnX() - 10);  // Moves 10 tiles left
+            enemy3.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
 
             // set the spawn points of the red and green flag (start and finish)
             portal.setAnimation(portalAnimLevel1);
@@ -407,10 +417,14 @@ public class Game extends GameCore implements ActionListener
             {
                 Sound sound = new Sound("sounds/robot_death.wav"); // load fail/death sound
                 sound.start();
+//                sound.echo("robot_death.wav");
                 System.out.println("You died!"); // inform user that they died
                 levelNumber = 1; // reset level number to 1
                 resetVariables(); // reset all variables
                 Game.State = Game.STATE.DEAD; // Change game state to the 'Dead' state
+                if (midiSequencer != null && midiSequencer.isRunning()) {
+                    midiSequencer.stop();
+                }
             }
         }
     }
@@ -657,6 +671,29 @@ public class Game extends GameCore implements ActionListener
         else if (State == STATE.COMPLETE) {
             complete.render(g);
         }
+        else if (State == STATE.MISSION_SUCCESS) {
+            g.setColor(Color.BLACK); // Black background
+            g.fillRect(0, 0, getWidth(), getHeight());
+
+            // === "Mission Success!" ===
+            g.setColor(Color.GREEN);
+            g.setFont(new Font("Arial", Font.BOLD, 48));
+            String message = "Mission Success!";
+            FontMetrics fm = g.getFontMetrics();
+            int x = (getWidth() - fm.stringWidth(message)) / 2;
+            int y = getHeight() / 2 - 50;
+            g.drawString(message, x, y);
+
+            // === "Press R to Restart" ===
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 24));
+            String restartMessage = "Press R to Restart";
+            FontMetrics fmRestart = g.getFontMetrics(); // get new metrics for the smaller font
+            int rx = (getWidth() - fmRestart.stringWidth(restartMessage)) / 2;
+            int ry = getHeight() - 50;
+            g.drawString(restartMessage, rx, ry);
+        }
+
     }
 
 
@@ -1041,6 +1078,19 @@ public class Game extends GameCore implements ActionListener
         if (State == STATE.DEAD && key == KeyEvent.VK_R) {
             State = STATE.GAME;
             initialiseGame();  // Restart the game
+            if (midiSequencer != null) {
+                midiSequencer.setTickPosition(0); // Rewind
+                midiSequencer.start(); // Resume
+            }
+        }
+
+        if (State == STATE.MISSION_SUCCESS && key == KeyEvent.VK_R) {
+            State = STATE.GAME;
+            initialiseGame();
+            if (midiSequencer != null) {
+                midiSequencer.setTickPosition(0);
+                midiSequencer.start(); // Optional: restart theme
+            }
         }
     }
 
@@ -1056,13 +1106,20 @@ public class Game extends GameCore implements ActionListener
             init("level2/level2.txt"); // load level 2
             initialiseGame(); // re-initialise the game
         }
-        else if (levelNumber == 2)
-        {
-            levelNumber = 1; // reset to 1
+        else if (levelNumber == 2) {
             System.out.println("The End"); // Player has finished the game
+
+            if (midiSequencer != null && midiSequencer.isRunning()) {
+                midiSequencer.stop(); // Stop MIDI background music
+            }
+
+            Sound sound = new Sound("win.wav"); // Load win sound
+            sound.echo("win.wav"); // Play win sound with echo
+
+            levelNumber = 1; // Reset for next playthrough
             gemsCollected = 0;
             portalState = "Closed";
-            Game.State = Game.STATE.COMPLETE; // Return to the main menu
+            Game.State = Game.STATE.MISSION_SUCCESS; // Immediately switch to mission success screen
         }
     }
 
@@ -1123,6 +1180,7 @@ public class Game extends GameCore implements ActionListener
         GAME,
         HELP,
         DEAD,
-        COMPLETE
+        COMPLETE,
+        MISSION_SUCCESS
     }
 }
