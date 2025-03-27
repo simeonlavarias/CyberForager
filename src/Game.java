@@ -116,11 +116,11 @@ public class Game extends GameCore implements ActionListener
     }
 
     // Various menu-type screens to improve UX
-    public static STATE State = STATE.MENU;
-    private Menu menu;
-    private Dead dead;
-    private Help help;
-    private Complete complete;
+    public static STATE State = STATE.START;
+    private Starter starter;
+//    private Dead dead;
+//    private Help help;
+//    private Complete complete;
 
     /**
      * The obligatory main method that creates
@@ -267,7 +267,7 @@ public class Game extends GameCore implements ActionListener
      */
     public void init(String map)
     {
-        menu = new Menu();
+        starter = new Starter();
         //background = loadImage("images/background.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT);
         // Load tile map
         tmap.loadMap("maps", map);
@@ -312,10 +312,10 @@ public class Game extends GameCore implements ActionListener
         portal = new Sprite(portalAnimLevel1);
 
         // === Initialize Screens ===
-        menu = new Menu();
-        dead = new Dead();
-        help = new Help();
-        complete = new Complete();
+        starter = new Starter();
+//        dead = new Dead();
+//        help = new Help();
+//        complete = new Complete();
 
         // Initialize game variables
         initialiseGame();
@@ -344,8 +344,8 @@ public class Game extends GameCore implements ActionListener
      */
     public void update(long elapsed)
     {
-        if (State == STATE.MENU) {
-            menu.update();  // Let the logo fade-in animation run
+        if (State == STATE.START) {
+            starter.update();  // Let the logo fade-in animation run
             return;  // Don't process game logic when in menu
         }
         if (State == STATE.GAME)  // If in the game state, i.e. in a level..
@@ -543,8 +543,8 @@ public class Game extends GameCore implements ActionListener
     public void draw(Graphics2D g) {
 
         // If we are in the MENU state, render the menu and return early.
-        if (State == STATE.MENU) {
-            menu.render(g);
+        if (State == STATE.START) {
+            starter.render(g);
             return;
         }
 
@@ -665,12 +665,12 @@ public class Game extends GameCore implements ActionListener
 
         }
 
-        else if (State == STATE.HELP) {
-            help.render(g);
-        }
-        else if (State == STATE.COMPLETE) {
-            complete.render(g);
-        }
+//        else if (State == STATE.HELP) {
+//            help.render(g);
+//        }
+//        else if (State == STATE.COMPLETE) {
+//            complete.render(g);
+//        }
         else if (State == STATE.MISSION_SUCCESS) {
             g.setColor(Color.BLACK); // Black background
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -1021,8 +1021,8 @@ public class Game extends GameCore implements ActionListener
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
 
-        if (State == STATE.MENU) {
-            if (key == KeyEvent.VK_SPACE && menu.isFadedIn()) {
+        if (State == STATE.START) {
+            if (key == KeyEvent.VK_SPACE && starter.isFadedIn()) {
                 System.out.println("Starting game...");
                 State = STATE.GAME;
                 initialiseGame();
@@ -1071,7 +1071,7 @@ public class Game extends GameCore implements ActionListener
             }
 
             if (key == KeyEvent.VK_Q) {
-                State = STATE.MENU;
+                State = STATE.START;
             }
         }
 
@@ -1176,11 +1176,9 @@ public class Game extends GameCore implements ActionListener
 
     public enum STATE // an enumerated list of states for the game to use (as above)
     {
-        MENU,
+        START,
         GAME,
-        HELP,
         DEAD,
-        COMPLETE,
         MISSION_SUCCESS
     }
 }

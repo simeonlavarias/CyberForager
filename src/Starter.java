@@ -1,13 +1,13 @@
 import javax.swing.*;
 import java.awt.*;
 
-public class Menu extends JPanel {
+public class Starter extends JPanel {
 
     private Image logo;
     private float alpha = 0.0f;  // Transparency level (0 = fully transparent, 1 = fully visible)
     private boolean fadingIn = true;
 
-    public Menu() {
+    public Starter() {
         // Load logo image (ensure the path is correct)
         ImageIcon logoIcon = new ImageIcon("images/Icons/cyber_forager_logo.png");
         logo = logoIcon.getImage();

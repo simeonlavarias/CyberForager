@@ -18,7 +18,7 @@ import javax.sound.sampled.*;
 import java.io.*;
 
 public class EchoSamplesPlayer {
-    private static final int ECHO_NUMBER = 4;   // how many echoes to add
+    private static final int ECHO_NUMBER = 5;   // how many echoes to add
     private static final double DECAY = 0.5;    // the decay for each echo
 
     private static AudioInputStream stream; // AudioInputStream
