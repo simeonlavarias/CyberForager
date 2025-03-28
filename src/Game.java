@@ -1,7 +1,7 @@
 import game2D.*;
 
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
+import java.awt.image.BufferedImage;
+import javax.sound.midi.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -9,7 +9,6 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import javax.sound.midi.*;
 
 // Game demonstrates how we can override the GameCore class
 // to create our own 'game'. We usually need to implement at
@@ -22,8 +21,6 @@ import javax.sound.midi.*;
 /**
  * @author David Cairns
  */
-@SuppressWarnings("serial")
-// TODO: Slight issue with player getting stuck in walls or being able to clip out of the map - might revisit if I have time
 public class Game extends GameCore implements ActionListener
 {
     // width of the screen
@@ -91,7 +88,6 @@ public class Game extends GameCore implements ActionListener
     public float postY;
 
     // Images
-    private Image overlay;
     private Image[] parallaxLayers; // Array to store multiple background layers
     private Image fg; // The foreground image
     private Image heart1; // 3 individual heart images for the player's remaining life
@@ -118,9 +114,6 @@ public class Game extends GameCore implements ActionListener
     // Various menu-type screens to improve UX
     public static STATE State = STATE.START;
     private Starter starter;
-//    private Dead dead;
-//    private Help help;
-//    private Complete complete;
 
     /**
      * The obligatory main method that creates
@@ -128,8 +121,7 @@ public class Game extends GameCore implements ActionListener
      *
      * @param args The list of parameters this program might use (ignored)
      */
-    public static void main(String[] args) throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
-    {
+    public static void main(String[] args) {
 
 //        Game game = new Game(); // Create a new instance of Game
 //
@@ -152,16 +144,7 @@ public class Game extends GameCore implements ActionListener
             e.printStackTrace();
         }
 
-//        game.themeMusic = new Sound("sounds/theme.wav"); // Load theme music
-        //game.themeMusic.loop(); // Loop the music continuously
-
-//        Sound theme = new Sound("sounds/theme.wav"); // load theme
-//        theme.playTheme(); // play theme
-        // Start in windowed mode with the given screen height and width
-        // Useful game constants
-        // width of the screen
         int screenWidth = game.screenWidth;
-        // height of the screen
         int screenHeight = game.screenHeight;
         game.run(false, screenWidth, screenHeight);
     }
@@ -272,15 +255,13 @@ public class Game extends GameCore implements ActionListener
         // Load tile map
         tmap.loadMap("maps", map);
 
-        overlay = loadImage("images/Overlay.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT);
-
-        // Load multiple parallax backgrounds
+        // Load multiple parallax backgrounds and scale to 2x screen width
         parallaxLayers = new Image[]{
-                loadImage("images/1.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT),
-                loadImage("images/2.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT),
-                loadImage("images/3.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT),
-                loadImage("images/4.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT),
-                loadImage("images/5.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT)
+                loadAndScaleImage("images/1.png", screenWidth, screenHeight),
+                loadAndScaleImage("images/2.png", screenWidth, screenHeight),
+                loadAndScaleImage("images/3.png", screenWidth, screenHeight),
+                loadAndScaleImage("images/4.png", screenWidth, screenHeight),
+                loadAndScaleImage("images/5.png", screenWidth, screenHeight)
         };
 
         // === Player Animations ===
@@ -471,7 +452,7 @@ public class Game extends GameCore implements ActionListener
         touchingGround = false;
         if (jumpsDone < 1) {
             if (player.getVelocityY() >= 0) {
-                new Sound("sounds/jump.wav").start();
+                new Sound("sounds/cyborg_jump.wav").start();
                 player.setVelocityY(-0.75f);
                 player.shiftY(-0.01f);
                 jump = false;
@@ -552,40 +533,13 @@ public class Game extends GameCore implements ActionListener
         int xo = (int) -player.getX() + 150;
         int yo = (int) -player.getY() + 200;
 
-        // Draw background tiles (parallax background, moves slower than foreground).
-        for (int y = 0; y < tmap.getMapHeight(); y += overlay.getHeight(null)) {
-            for (int x = 0; x < tmap.getMapWidth(); x += overlay.getWidth(null)) {
-                g.drawImage(overlay, xo / 12, yo / 12, null);
-            }
-        }
+        // New parallax drawing using helper method
+        drawParallaxLayer(g, parallaxLayers[0], xo, yo, 12);
+        drawParallaxLayer(g, parallaxLayers[1], xo, yo, 9);
+        drawParallaxLayer(g, parallaxLayers[2], xo, yo, 6);
+        drawParallaxLayer(g, parallaxLayers[3], xo, yo, 3);
+        drawParallaxLayer(g, parallaxLayers[4], xo, yo, 2); // Optional: add a fifth layer
 
-        // Draw background tiles (parallax background, moves slower than foreground).
-        for (int y = 0; y < tmap.getMapHeight(); y += parallaxLayers[0].getHeight(null)) {
-            for (int x = 0; x < tmap.getMapWidth(); x += parallaxLayers[0].getWidth(null)) {
-                g.drawImage(parallaxLayers[0], xo / 12, yo / 12, null);
-            }
-        }
-
-        // Draw background tiles (parallax background, moves slower than foreground).
-        for (int y = 0; y < tmap.getMapHeight(); y += parallaxLayers[1].getHeight(null)) {
-            for (int x = 0; x < tmap.getMapWidth(); x += parallaxLayers[1].getWidth(null)) {
-                g.drawImage(parallaxLayers[1], xo / 9, yo / 9, null);
-            }
-        }
-
-        // Draw background tiles (parallax background, moves slower than foreground).
-        for (int y = 0; y < tmap.getMapHeight(); y += parallaxLayers[2].getHeight(null)) {
-            for (int x = 0; x < tmap.getMapWidth(); x += parallaxLayers[2].getWidth(null)) {
-                g.drawImage(parallaxLayers[2], xo / 6, yo / 6 , null);
-            }
-        }
-
-        // Draw background tiles (parallax background, moves slower than foreground).
-        for (int y = 0; y < tmap.getMapHeight(); y += parallaxLayers[3].getHeight(null)) {
-            for (int x = 0; x < tmap.getMapWidth(); x += parallaxLayers[3].getWidth(null)) {
-                g.drawImage(parallaxLayers[3], xo / 3, yo / 3, null);
-            }
-        }
 
         if (State == STATE.GAME) {
 
@@ -829,7 +783,7 @@ public class Game extends GameCore implements ActionListener
         {
             if (s.equals(player))
             {
-                Sound damage = new Sound("sounds/ouch.wav"); // Load damage sound
+                Sound damage = new Sound("sounds/cyborg_hurt.wav"); // Load damage sound
                 damage.start(); // Run thread
                 // decrement remaining life
                 if (player.getPlayerDirection()) // if player is moving right
@@ -974,7 +928,7 @@ public class Game extends GameCore implements ActionListener
             for (Sprite enemy : enemies) {
                 if (BoundingCircleCollision(player, enemy)) {
                     if (attacking) { // Check if the player is attacking
-                        Sound enemyDeath = new Sound("sounds/whimper.wav");
+                        Sound enemyDeath = new Sound("sounds/enemy_die.wav");
                         enemyDeath.start();
                         enemy.stop();
                         enemy.hide();
@@ -987,7 +941,7 @@ public class Game extends GameCore implements ActionListener
             }
 
             if (collided) {
-                Sound damage = new Sound("sounds/ouch.wav");
+                Sound damage = new Sound("sounds/cyborg_hurt.wav");
                 damage.start();
                 if (player.getPlayerDirection()) {
                     player.setVelocityY(-0.2f);
@@ -1085,11 +1039,13 @@ public class Game extends GameCore implements ActionListener
         }
 
         if (State == STATE.MISSION_SUCCESS && key == KeyEvent.VK_R) {
+            levelNumber = 1;
+            init("level1/level1.txt");  // Reload level and sprites
+            initialiseGame();           // Reset positions and logic
             State = STATE.GAME;
-            initialiseGame();
             if (midiSequencer != null) {
                 midiSequencer.setTickPosition(0);
-                midiSequencer.start(); // Optional: restart theme
+                midiSequencer.start(); // Restart background music
             }
         }
     }
@@ -1140,6 +1096,19 @@ public class Game extends GameCore implements ActionListener
         return (((dx * dx) + (dy * dy)) < (minimum * minimum)); // return true if the bounding circles overlap
     }
 
+    private void drawParallaxLayer(Graphics2D g, Image img, int xo, int yo, int scrollFactor) {
+        int layerWidth = img.getWidth(null);
+        int layerHeight = img.getHeight(null);
+        int drawX = (xo / scrollFactor) % layerWidth;
+        if (drawX > 0) drawX -= layerWidth;
+
+        for (int y = 0; y < getHeight(); y += layerHeight) {
+            for (int x = drawX; x < getWidth(); x += layerWidth) {
+                g.drawImage(img, x, y, null);
+            }
+        }
+    }
+
     /**
      *
      * @param e the key press event
@@ -1150,27 +1119,44 @@ public class Game extends GameCore implements ActionListener
         int key = e.getKeyCode(); // fetch the key input from the user
 
         // Using breaks ana switch cases makes the code neater
-        switch (key)
-        {
-            case KeyEvent.VK_ESCAPE:
-                stop(); // end the game
-                break;
-            case KeyEvent.VK_SPACE:
+        switch (key) {
+            case KeyEvent.VK_ESCAPE -> stop(); // end the game
+            case KeyEvent.VK_SPACE -> {
                 jump = false; // set jump flag to false - player no longer currently trying to jump
                 canJump = true; // set canJump to true, as the player has taken their finger off the key
-                break;
-            case KeyEvent.VK_LEFT:
+            }
+            case KeyEvent.VK_LEFT -> {
                 left = false; // stop travelling left
                 decelerate = true; // start decelerating
-                break;
-            case KeyEvent.VK_RIGHT:
+            }
+            case KeyEvent.VK_RIGHT -> {
                 right = false; // stop travelling right
                 decelerate = true; // start decelerating
-                break;
-            case KeyEvent.VK_A:  // Stop attacking immediately
-                break;
-            default: // by default (if any other key pressed)
-                break; // break out of statement
+            }
+            // Stop attacking immediately
+            default -> {
+            } // by default (if any other key pressed)
+            // break out of statement
+        }
+    }
+
+    // 🔧 Helper method to load and safely scale images
+    private BufferedImage loadAndScaleImage(String path, int width, int height) {
+        try {
+            Image img = Toolkit.getDefaultToolkit().getImage(path);
+            MediaTracker tracker = new MediaTracker(new java.awt.Container());
+            tracker.addImage(img, 0);
+            tracker.waitForID(0);
+
+            BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = scaled.createGraphics();
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2d.drawImage(img, 0, 0, width, height, null);
+            g2d.dispose();
+            return scaled;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
