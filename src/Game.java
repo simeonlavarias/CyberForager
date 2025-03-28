@@ -1,5 +1,9 @@
 import game2D.*;
 
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import javax.swing.*;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import javax.sound.midi.*;
 import java.awt.*;
@@ -21,20 +25,12 @@ import java.util.ArrayList;
 /**
  * @author David Cairns
  */
-public class Game extends GameCore implements ActionListener
+public class Game extends GameCore implements ActionListener, MouseListener
 {
     // width of the screen
     private final int screenWidth = 512;
     // height of the screen
     private final int screenHeight = 384;
-
-    public int getScreenWidth() {
-        return screenWidth;
-    }
-
-    public int getScreenHeight() {
-        return screenHeight;
-    }
     private Sequencer midiSequencer;
 
     // Game state flags
@@ -66,6 +62,8 @@ public class Game extends GameCore implements ActionListener
     private Animation jumping_left;
     private Animation falling_right;
     private Animation falling_left;
+    private Animation hurt_right;
+    private Animation hurt_left;
     private Animation enemy_running_left;
     private Animation enemy_running_right;
     private Animation attack_right;
@@ -87,9 +85,13 @@ public class Game extends GameCore implements ActionListener
     public float postX;
     public float postY;
 
+    // Variables for hurt animation
+    private boolean isHurt = false;
+    private long hurtStartTime = 0;
+    private final long hurtDuration = 700; // milliseconds
+
     // Images
     private Image[] parallaxLayers; // Array to store multiple background layers
-    private Image fg; // The foreground image
     private Image heart1; // 3 individual heart images for the player's remaining life
     private Image heart2;
     private Image heart3;
@@ -113,7 +115,11 @@ public class Game extends GameCore implements ActionListener
 
     // Various menu-type screens to improve UX
     public static STATE State = STATE.START;
-    private Starter starter;
+
+    // START SCREEN VARIABLES
+    private Image logo;
+    private float alpha = 0.0f;  // Transparency (0 = transparent, 1 = visible)
+    private boolean fadingIn = true;
 
     /**
      * The obligatory main method that creates
@@ -250,7 +256,8 @@ public class Game extends GameCore implements ActionListener
      */
     public void init(String map)
     {
-        starter = new Starter();
+        logo = new ImageIcon("images/Icons/cyber_forager_logo.png").getImage();
+
         //background = loadImage("images/background.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT);
         // Load tile map
         tmap.loadMap("maps", map);
@@ -273,6 +280,8 @@ public class Game extends GameCore implements ActionListener
         jumping_left = loadAnimation("cyborg_jump_left.png", 4, 600);
         attack_right = loadAnimation("cyborg_attack_right.png", 8, 100);
         attack_left = loadAnimation("cyborg_attack_left.png", 8, 100);
+        hurt_right = loadAnimation("cyborg_hurt_right.png", 2, 200); // Adjust frame count and speed
+        hurt_left = loadAnimation("cyborg_hurt_left.png", 2, 200);
         falling_right = jumping_right;
         falling_left = jumping_left;
 
@@ -292,23 +301,18 @@ public class Game extends GameCore implements ActionListener
         enemy4 = new Sprite(enemy_running_right);
         portal = new Sprite(portalAnimLevel1);
 
-        // === Initialize Screens ===
-        starter = new Starter();
-//        dead = new Dead();
-//        help = new Help();
-//        complete = new Complete();
-
         // Initialize game variables
         initialiseGame();
 
         // Debugging (print the map for verification)
         System.out.println(tmap);
 
-        // Load foreground and health icons
-        fg = loadImage("images/clouds.png").getScaledInstance(1920, 1080, Image.SCALE_DEFAULT);
+        // Load foreground and health icon
         heart1 = loadImage("images/Heart.png").getScaledInstance(25, 22, Image.SCALE_DEFAULT);
         heart2 = heart1;
         heart3 = heart1;
+
+        addMouseListener(this);
     }
 
     // === Helper Method to Load Animations ===
@@ -326,9 +330,10 @@ public class Game extends GameCore implements ActionListener
     public void update(long elapsed)
     {
         if (State == STATE.START) {
-            starter.update();  // Let the logo fade-in animation run
-            return;  // Don't process game logic when in menu
+            updateStarter();
+            return;
         }
+
         if (State == STATE.GAME)  // If in the game state, i.e. in a level..
         {
             // Add sprites to an array list for easier processing
@@ -391,6 +396,10 @@ public class Game extends GameCore implements ActionListener
             {
                 handleTileMapCollisions(s);
             }
+
+            // Clamp player to screen/map edge
+            handleScreenEdge(player, tmap);
+
             // Check for sprite collisions
             handleSpriteCollisions();
 
@@ -523,9 +532,8 @@ public class Game extends GameCore implements ActionListener
      */
     public void draw(Graphics2D g) {
 
-        // If we are in the MENU state, render the menu and return early.
         if (State == STATE.START) {
-            starter.render(g);
+            renderStarter(g);
             return;
         }
 
@@ -534,11 +542,11 @@ public class Game extends GameCore implements ActionListener
         int yo = (int) -player.getY() + 200;
 
         // New parallax drawing using helper method
-        drawParallaxLayer(g, parallaxLayers[0], xo, yo, 12);
-        drawParallaxLayer(g, parallaxLayers[1], xo, yo, 9);
-        drawParallaxLayer(g, parallaxLayers[2], xo, yo, 6);
-        drawParallaxLayer(g, parallaxLayers[3], xo, yo, 3);
-        drawParallaxLayer(g, parallaxLayers[4], xo, yo, 2); // Optional: add a fifth layer
+        drawParallaxLayer(g, parallaxLayers[0], xo, 12);
+        drawParallaxLayer(g, parallaxLayers[1], xo, 9);
+        drawParallaxLayer(g, parallaxLayers[2], xo, 6);
+        drawParallaxLayer(g, parallaxLayers[3], xo, 3);
+        drawParallaxLayer(g, parallaxLayers[4], xo, 2); // Optional: add a fifth layer
 
 
         if (State == STATE.GAME) {
@@ -564,8 +572,6 @@ public class Game extends GameCore implements ActionListener
             tmap.draw(g, xo, yo);
 
             // Draw foreground clouds (parallax effect).
-            g.drawImage(fg, xo * 2, yo * 2 - 320, null);
-            g.drawImage(fg, xo * 2 + fg.getWidth(null), yo * 2 - 320, null);
 
             // Draw score and flag status.
             g.setColor(Color.white);
@@ -738,11 +744,6 @@ public class Game extends GameCore implements ActionListener
         //the y position of the tile (in tiles)
         int tileY = (int) ((s.getY() + s.getHeight()) / tmap.getTileHeight());
 
-        // Variables for the control of movement on slopes (doesn't really work)
-        int xc = tmap.getTileXC(tileX, tileY);
-        int xcc = (int) (player.getX() - xc);
-        int yc = tmap.getTileYC(tileX, tileY) - tmap.getTileHeight();
-
         if (tmap.getTileChar(tileX, tileY) == 'G' || tmap.getTileChar(tileX, tileY) == 'T' ||
                 tmap.getTileChar(tileX, tileY) == 'B' || tmap.getTileChar(tileX, tileY) == 'D' ||
                 tmap.getTileChar(tileX, tileY) == 'L' || tmap.getTileChar(tileX, tileY) == 'R' ||
@@ -761,22 +762,6 @@ public class Game extends GameCore implements ActionListener
                 jumpsDone = 0;
                 touchingGround = true;
             }
-        }
-
-        //TODO: Rotation on slopes & additional work on making it not look terrible, lots of jittering in and out of slopes right now
-
-        if (tmap.getTileChar(tileX, tileY - 1) == '/') // If on a top left slope
-        {
-            s.setVelocityY(0);
-            s.setY(yc - 16 - ((float) xcc / 2));
-            s.setVelocityY(0);
-        }
-
-        if (tmap.getTileChar(tileX, tileY - 1) == '\\') // If on a top right slope
-        {
-            s.setVelocityY(0);
-            s.setY(yc - 16 - (16 - ((float) xcc / 2)));
-            s.setVelocityY(0);
         }
 
         if (tmap.getTileChar(tileX, tileY) == 'V') // If player touches lava //TODO: Player can be forced into a wall after being knocked back - same for enemy damage
@@ -909,6 +894,41 @@ public class Game extends GameCore implements ActionListener
         }
     }
 
+    /**
+     * Checks and handles collisions with the edge of the screen. You should generally
+     * use tile map collisions to prevent the player leaving the game area. This method
+     * is only included as a temporary measure until you have properly developed your
+     * tile maps.
+     *
+     * @param s         The Sprite to check collisions for
+     * @param tmap      The tile map to check
+     */
+    public void handleScreenEdge(Sprite s, TileMap tmap)
+    {
+        // Bottom edge
+        float bottomDifference = s.getY() + s.getHeight() - tmap.getPixelHeight();
+        if (bottomDifference > 0)
+        {
+            s.setY(tmap.getPixelHeight() - s.getHeight() - (int)(bottomDifference));
+            s.setVelocityY(-s.getVelocityY() * 0.75f); // bounce up
+        }
+
+        // Left edge
+        if (s.getX() < 0)
+        {
+            s.setX(0);
+            s.setVelocityX(0);
+        }
+
+        // Right edge
+        float rightDifference = s.getX() + s.getWidth() - tmap.getPixelWidth();
+        if (rightDifference > 0)
+        {
+            s.setX(tmap.getPixelWidth() - s.getWidth() - (int)(rightDifference));
+            s.setVelocityX(0);
+        }
+    }
+
     // Method for handling sprite collisions using a bounding circle
     private void handleSpriteCollisions()
     {
@@ -926,8 +946,8 @@ public class Game extends GameCore implements ActionListener
             boolean collided = false;
 
             for (Sprite enemy : enemies) {
-                if (BoundingCircleCollision(player, enemy)) {
-                    if (attacking) { // Check if the player is attacking
+                if (boundingBoxCollision(player, enemy) && BoundingCircleCollision(player, enemy)) {
+                    if (attacking) {
                         Sound enemyDeath = new Sound("sounds/enemy_die.wav");
                         enemyDeath.start();
                         enemy.stop();
@@ -974,15 +994,6 @@ public class Game extends GameCore implements ActionListener
      */
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
-
-        if (State == STATE.START) {
-            if (key == KeyEvent.VK_SPACE && starter.isFadedIn()) {
-                System.out.println("Starting game...");
-                State = STATE.GAME;
-                initialiseGame();
-                return;
-            }
-        }
 
         if (State == STATE.GAME) {
             if (key == KeyEvent.VK_ESCAPE) stop();
@@ -1050,20 +1061,37 @@ public class Game extends GameCore implements ActionListener
         }
     }
 
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if (State == STATE.START && alpha >= 1.0f) {
+            System.out.println("Mouse clicked: starting game...");
+            State = STATE.GAME;
+            initialiseGame();
+        }
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {}
+    @Override
+    public void mouseReleased(MouseEvent e) {}
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+    @Override
+    public void mouseExited(MouseEvent e) {}
 
     public void finishLevel()
     {
         if (levelNumber == 1)  // if on level 1
         {
             levelNumber++; // increment level number
-            System.out.println("Level 1 Complete!"); // inform user they successfully finished the level
+            System.out.println("Level 1 Done!"); // inform user they successfully finished the level
             gemsCollected = 0; // reset the collected gems variable (otherwise the next level will instantly spawn the green flag)
             portalState = "Closed"; // reset flag status
             init("level2/level2.txt"); // load level 2
             initialiseGame(); // re-initialise the game
         }
         else if (levelNumber == 2) {
-            System.out.println("The End"); // Player has finished the game
+            System.out.println("Mission Success"); // Player has finished the game
 
             if (midiSequencer != null && midiSequencer.isRunning()) {
                 midiSequencer.stop(); // Stop MIDI background music
@@ -1079,6 +1107,18 @@ public class Game extends GameCore implements ActionListener
         }
     }
 
+    /** Use the sample code in the lecture notes to properly detect
+     * a bounding box collision between sprites s1 and s2.
+     *
+     * @return	true if a collision may have occurred, false if it has not.
+     */
+    public boolean boundingBoxCollision(Sprite s1, Sprite s2)
+    {
+        Rectangle r1 = new Rectangle((int) s1.getX() + 5, (int) s1.getY() + 5, s1.getWidth() - 10, s1.getHeight() - 10);
+        Rectangle r2 = new Rectangle((int) s2.getX() + 5, (int) s2.getY() + 5, s2.getWidth() - 10, s2.getHeight() - 10);
+        return r1.intersects(r2);
+    }
+
     // method to calculate collision between two sprites
 
     /**
@@ -1089,14 +1129,20 @@ public class Game extends GameCore implements ActionListener
      */
     public boolean BoundingCircleCollision(Sprite one, Sprite two)
     {
-        int dx, dy, minimum; // variables to calculate collision between 2 sprites
-        dx = ((int) one.getX() + one.getWidth() / 2) - ((int) two.getX() + two.getWidth() / 2); // get the x distance between the centre point of sprite one and sprite two
-        dy = ((int) one.getY() + one.getHeight() / 2) - ((int) two.getY() + two.getHeight() / 2); // get the y distance between the centre point of sprite one and sprite two
-        minimum = one.getWidth() / 2 + two.getWidth() / 2; // take the width of both sprites and divide them by two
-        return (((dx * dx) + (dy * dy)) < (minimum * minimum)); // return true if the bounding circles overlap
+        int dx = ((int) one.getX() + one.getWidth() / 2) - ((int) two.getX() + two.getWidth() / 2);
+        int dy = ((int) one.getY() + one.getHeight() / 2) - ((int) two.getY() + two.getHeight() / 2);
+
+        // Use a slightly smaller effective radius
+        double r1 = one.getWidth() * 0.4;
+        double r2 = two.getWidth() * 0.4;
+
+        double distanceSquared = dx * dx + dy * dy;
+        double radiusSum = r1 + r2;
+
+        return distanceSquared < radiusSum * radiusSum;
     }
 
-    private void drawParallaxLayer(Graphics2D g, Image img, int xo, int yo, int scrollFactor) {
+    private void drawParallaxLayer(Graphics2D g, Image img, int xo, int scrollFactor) {
         int layerWidth = img.getWidth(null);
         int layerHeight = img.getHeight(null);
         int drawX = (xo / scrollFactor) % layerWidth;
@@ -1157,6 +1203,44 @@ public class Game extends GameCore implements ActionListener
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    private void updateStarter() {
+        if (fadingIn && alpha < 1.0f) {
+            alpha += 0.01f;
+            if (alpha >= 1.0f) {
+                alpha = 1.0f;
+                fadingIn = false;
+            }
+        }
+    }
+
+    private void renderStarter(Graphics g) {
+        Graphics2D g2d = (Graphics2D) g;
+
+        // Fill the background
+        g2d.setColor(Color.BLACK);
+        g2d.fillRect(0, 0, screenWidth, screenHeight);
+
+        // Fade in logo
+        AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha);
+        g2d.setComposite(ac);
+
+        int logoX = (screenWidth - logo.getWidth(null)) / 2;
+        int logoY = (screenHeight - logo.getHeight(null)) / 3;
+        g2d.drawImage(logo, logoX, logoY, null);
+
+        if (alpha >= 1.0f) {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 24));
+            String message = "Click Anywhere to Start";
+            FontMetrics fm = g2d.getFontMetrics();
+            int msgWidth = fm.stringWidth(message);
+            int textX = (screenWidth - msgWidth) / 2;
+            int textY = logoY + logo.getHeight(null) + 50;
+            g2d.drawString(message, textX, textY);
         }
     }
 
