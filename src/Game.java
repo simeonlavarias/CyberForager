@@ -41,6 +41,9 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private boolean touchingGround = false;
     private boolean lastDirectionRight = true; // Tracks last direction (true = right, false = left)
     private boolean attacking = false; // Is the player attacking?
+    private long loadingStartTime = 0;
+    private final int loadingDuration = 4000; // in milliseconds
+
 
     // Integer values
     private int jumpsDone = 0; // no. jumps performed this jump
@@ -121,10 +124,15 @@ public class Game extends GameCore implements ActionListener, MouseListener
      */
     public static void main(String[] args) {
 
-
-
         Game game = new Game(); // Create a new instance of Game
-        game.init("level1/level1.txt"); // load the first map
+
+        game.levelNumber = 2; // Start directly on level 2
+        game.init("level2/level2.txt"); // Load level 2
+        State = Game.STATE.GAME; // Go directly to gameplay state
+        game.initialiseGame(); // Initialize level data
+
+//        Game game = new Game(); // Create a new instance of Game
+//        game.init("level1/level1.txt"); // load the first map
         try {
             game.midiSequencer = MidiSystem.getSequencer();
             game.midiSequencer.open();
@@ -166,8 +174,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
             player.setVelocityY(0);
 
             // Enemy 1
-            enemy1.setSpawnX(tmap.getTileXC(11, 4));
-            enemy1.setSpawnY(tmap.getTileYC(11, 4));
+            enemy1.setSpawnX(tmap.getTileXC(12, 5));
+            enemy1.setSpawnY(tmap.getTileYC(12, 5));
             enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
             enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
@@ -178,10 +186,10 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy2.setMaxPatrol(enemy2.getSpawnX() + 15);  // Moves 20 tiles right
 
             // Enemy 3
-            enemy3.setSpawnX(tmap.getTileXC(36, 17));
-            enemy3.setSpawnY(tmap.getTileYC(36, 17));
-            enemy3.setMinPatrol(enemy3.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);  // Moves 10 tiles right
+            enemy3.setSpawnX(tmap.getTileXC(36, 11));
+            enemy3.setSpawnY(tmap.getTileYC(36, 11));
+            enemy3.setMinPatrol(enemy3.getSpawnX() - 8);  // Moves 8 tiles left
+            enemy3.setMaxPatrol(enemy3.getSpawnX() + 8);  // Moves 8 tiles right
 
             // Hide Enemy 4
             enemy4.hide();
@@ -207,30 +215,30 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
             totalCoins = 30;
 
-            player.setX(tmap.getTileXC(1, 12)); // get x & y coordinates of this tile
-            player.setY(tmap.getTileYC(1, 12));
+            player.setX(tmap.getTileXC(1, 10)); // get x & y coordinates of this tile
+            player.setY(tmap.getTileYC(1, 10));
             player.setVelocityX(0); // set velocities to 0
             player.setVelocityY(0);
 
-            // Enemy 1 - Top platform (Row 1, Col 15)
+            // Enemy 1
             enemy1.setSpawnX(tmap.getTileXC(5, 12));
             enemy1.setSpawnY(tmap.getTileYC(5, 12));
             enemy1.setMinPatrol(enemy1.getSpawnX() - 10);
             enemy1.setMaxPatrol(enemy1.getSpawnX() + 10);
 
-            // Enemy 2 - Middle platform (Row 4, Col 10)
-            enemy2.setSpawnX(tmap.getTileXC(23, 1));
-            enemy2.setSpawnY(tmap.getTileYC(23, 1));
+            // Enemy 2
+            enemy2.setSpawnX(tmap.getTileXC(23, 0));
+            enemy2.setSpawnY(tmap.getTileYC(23, 0));
             enemy2.setMinPatrol(enemy2.getSpawnX() - 10);
             enemy2.setMaxPatrol(enemy2.getSpawnX() + 10);
 
-            // Enemy 3 - Lower-mid platform (Row 7, Col 5)
-            enemy3.setSpawnX(tmap.getTileXC(41, 7));
-            enemy3.setSpawnY(tmap.getTileYC(41, 7));
+            // Enemy 3
+            enemy3.setSpawnX(tmap.getTileXC(33, 6));
+            enemy3.setSpawnY(tmap.getTileYC(33, 6));
             enemy3.setMinPatrol(enemy3.getSpawnX() - 10);
             enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);
 
-            // Enemy 4 - Bottom platform (Row 13, Col 38)
+            // Enemy 4
             enemy4.setSpawnX(tmap.getTileXC(53, 15));
             enemy4.setSpawnY(tmap.getTileYC(53, 15));
             enemy4.setMinPatrol(enemy4.getSpawnX() - 10);
@@ -250,7 +258,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
      */
     public void init(String map)
     {
-        logo = new ImageIcon("images/Icons/cyber_forager_logo.png").getImage();
+        logo = new ImageIcon("images/Logo/cyber_forager_logo.png").getImage();
 
         //background = loadImage("images/background.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT);
         // Load tile map
@@ -278,8 +286,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
         falling_left = jumping_left;
 
         // === Enemy Animations ===
-        enemy_running_left = loadAnimation("anim_enemy_running_left.png", 8, 400);
-        enemy_running_right = loadAnimation("anim_enemy_running_right.png", 8, 400);
+        enemy_running_left = loadAnimation("anim_enemy_running_left.png", 4, 400);
+        enemy_running_right = loadAnimation("anim_enemy_running_right.png", 4, 400);
 
         // === Portal Animations ===
         portalAnimLevel1 = loadAnimation("portal1.png", 9, 50);
@@ -324,6 +332,14 @@ public class Game extends GameCore implements ActionListener, MouseListener
         if (State == STATE.START) {
             updateStarter();
             return;
+        }
+
+        if (State == STATE.LOADING) {
+            if (System.currentTimeMillis() - loadingStartTime >= loadingDuration) {
+                State = STATE.GAME;
+                initialiseGame();
+            }
+            return; // Skip update during loading
         }
 
         if (State == STATE.GAME)  // If in the game state, i.e. in a level..
@@ -402,7 +418,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
 //                sound.echo("robot_death.wav");
                 System.out.println("You died!"); // inform user that they died
                 levelNumber = 1; // reset level number to 1
-                resetVariables(); // reset all variables
+                resetGame(); // reset all variables
                 Game.State = Game.STATE.DEAD; // Change game state to the 'Dead' state
                 if (midiSequencer != null && midiSequencer.isRunning()) {
                     midiSequencer.stop();
@@ -410,6 +426,20 @@ public class Game extends GameCore implements ActionListener, MouseListener
             }
         }
     }
+
+    private void renderLoading(Graphics2D g) {
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, getWidth(), getHeight());
+
+        g.setFont(new Font("Arial", Font.BOLD, 22));
+        g.setColor(Color.WHITE);
+        String message = "Loading...";
+        FontMetrics fm = g.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(message)) / 2;
+        int y = getHeight() / 2;
+        g.drawString(message, x, y);
+    }
+
 
     private void handlePlayerMovement(long elapsed) {
         applyGravity(elapsed);
@@ -540,6 +570,10 @@ public class Game extends GameCore implements ActionListener, MouseListener
         drawParallaxLayer(g, parallaxLayers[3], xo, 3);
         drawParallaxLayer(g, parallaxLayers[4], xo, 2); // Optional: add a fifth layer
 
+        if (State == STATE.LOADING) {
+            renderLoading(g);
+            return;
+        }
 
         if (State == STATE.GAME) {
 
@@ -669,7 +703,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
     }
 
     // Method to reset the variables at the end of the game
-    public void resetVariables()
+    public void resetGame()
     {
         coinsCollected = 0; // reset variables
         lifeRemaining = 3;
@@ -685,8 +719,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
         player.setVelocityY(0);
 
         // Enemy 1
-        enemy1.setSpawnX(tmap.getTileXC(11, 4));
-        enemy1.setSpawnY(tmap.getTileYC(11, 4));
+        enemy1.setSpawnX(tmap.getTileXC(12, 5));
+        enemy1.setSpawnY(tmap.getTileYC(12, 5));
         enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
         enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
@@ -697,10 +731,10 @@ public class Game extends GameCore implements ActionListener, MouseListener
         enemy2.setMaxPatrol(enemy2.getSpawnX() + 15);  // Moves 20 tiles right
 
         // Enemy 3
-        enemy3.setSpawnX(tmap.getTileXC(36, 17));
-        enemy3.setSpawnY(tmap.getTileYC(36, 17));
-        enemy3.setMinPatrol(enemy3.getSpawnX() - 10);  // Moves 10 tiles left
-        enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);  // Moves 10 tiles right
+        enemy3.setSpawnX(tmap.getTileXC(36, 11));
+        enemy3.setSpawnY(tmap.getTileYC(36, 11));
+        enemy3.setMinPatrol(enemy3.getSpawnX() - 8);  // Moves 8 tiles left
+        enemy3.setMaxPatrol(enemy3.getSpawnX() + 8);  // Moves 8 tiles right
 
         // Hide Enemy 4
         enemy4.hide();
@@ -708,10 +742,10 @@ public class Game extends GameCore implements ActionListener, MouseListener
         enemy4.setX(-9999); // move it offscreen
         enemy4.setY(-9999);
 
-            // set the spawn points of the red and green flag (start and finish)
-            portal.setAnimation(portalAnimLevel1);
-            portal.setX(tmap.getTileXC(61, 1));
-            portal.setY(tmap.getTileYC(61, 1));
+        // set the spawn points of the red and green flag (start and finish)
+        portal.setAnimation(portalAnimLevel1);
+        portal.setX(tmap.getTileXC(61, 1));
+        portal.setY(tmap.getTileYC(61, 1));
     }
 
     /**
@@ -1025,8 +1059,9 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
 
         if (State == STATE.DEAD && key == KeyEvent.VK_R) {
-            State = STATE.GAME;
-            initialiseGame();  // Restart the game
+            State = STATE.LOADING;
+            loadingStartTime = System.currentTimeMillis();
+            // No need to call initialiseGame here — it will happen after loading
             if (midiSequencer != null) {
                 midiSequencer.setTickPosition(0); // Rewind
                 midiSequencer.start(); // Resume
@@ -1035,12 +1070,12 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         if (State == STATE.MISSION_SUCCESS && key == KeyEvent.VK_R) {
             levelNumber = 1;
-            init("level1/level1.txt");  // Reload level and sprites
-            initialiseGame();           // Reset positions and logic
-            State = STATE.GAME;
+            init("level1/level1.txt");
+            State = STATE.LOADING;
+            loadingStartTime = System.currentTimeMillis();
             if (midiSequencer != null) {
                 midiSequencer.setTickPosition(0);
-                midiSequencer.start(); // Restart background music
+                midiSequencer.start();
             }
         }
     }
@@ -1049,8 +1084,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
     public void mousePressed(MouseEvent e) {
         if (State == STATE.START && alpha >= 1.0f) {
             System.out.println("Mouse clicked: starting game...");
-            State = STATE.GAME;
-            initialiseGame();
+            State = STATE.LOADING;
+            loadingStartTime = System.currentTimeMillis();
         }
     }
 
@@ -1231,6 +1266,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
     public enum STATE // an enumerated list of states for the game to use (as above)
     {
         START,
+        LOADING,
         GAME,
         DEAD,
         MISSION_SUCCESS

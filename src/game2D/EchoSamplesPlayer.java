@@ -1,222 +1,156 @@
 package game2D;
 
-/* The entire sound file is read in as a byte array, samples[]
-   via an AudioInputStream. An echo audio effect is then applied
-   by creating a new byte array. It is  passed in small chunks
-   to the SourceDataLine to go to the mixer. 
-
-   The echo effect is 4 copies of the original sound added to
-   the end of the original. The volume of each one is reduced (decayed)
-   by 0.5 over its predecessor.
-
-   To simplify the coding, the effect is only applied to 8-bit
-   PCM signed/unsigned audio.
-*/
-
-// Adapted from the example in Killer Game Programming in Java by Andrew Jackson
 import javax.sound.sampled.*;
 import java.io.*;
 
+/**
+ * This class plays a sound clip and applies an echo effect by appending
+ * multiple decayed versions of the original sound. The effect is only
+ * supported for 8-bit PCM signed or unsigned audio.
+ */
 public class EchoSamplesPlayer {
-    private static final int ECHO_NUMBER = 5;   // how many echoes to add
-    private static final double DECAY = 0.5;    // the decay for each echo
+    private static final int ECHO_COUNT = 5;       // Total echoes
+    private static final double DECAY_FACTOR = 0.5; // Volume decay rate
 
-    private static AudioInputStream stream; // AudioInputStream
-    private static AudioFormat format = null; // AudioFormat
-    private static SourceDataLine line = null; // DataLine for the info to be passed through
+    private static AudioInputStream audioStream;
+    private static AudioFormat audioFormat;
+    private static SourceDataLine audioLine;
 
-
-    public static void main(String[] args)
-    {
-        if (args.length != 1) // If wrong no. args
-        {
-            // Inform user and exit
+    public static void main(String[] args) {
+        if (args.length != 1) {
             System.out.println("Usage: java EchoSamplesPlayer <clip file>");
-            System.exit(0);
+            System.exit(1);
         }
 
-        createInput("sounds/" + args[0]); // create an input from the passed in argument
+        String filePath = "sounds/" + args[0];
+        loadAudioFile(filePath);
 
-        if (!isRequiredFormat())  // If the input is not the required format
-        {   // Inform user and exit
-            System.out.println("Format unsuitable for echoing");
-            System.exit(0);
+        if (!isSupportedFormat()) {
+            System.out.println("Only 8-bit PCM (signed or unsigned) formats are supported.");
+            System.exit(1);
         }
 
-        createOutput(); // now create the output based on the input sound
+        setupAudioLine();
 
-        int numBytes = (int) (stream.getFrameLength() * format.getFrameSize()); // Get the number of bytes in the input
+        int totalBytes = (int) (audioStream.getFrameLength() * audioFormat.getFrameSize());
+        byte[] rawAudio = fetchAudioBytes(totalBytes);
+        playAudio(rawAudio);
+    }
 
-        byte[] samples = getSamples(numBytes); // create an array of bytes
-        play(samples); // play the samples back
-
-    } // end of main()
-
-
-    private static void createInput(String fnm)
-    // Set up the audio input stream from the sound file
-    {
+    private static void loadAudioFile(String filePath) {
         try {
-            // link an audio stream to the sampled sound's file
-            stream = AudioSystem.getAudioInputStream(new File(fnm));
-            format = stream.getFormat();
+            audioStream = AudioSystem.getAudioInputStream(new File(filePath));
+            audioFormat = audioStream.getFormat();
 
-            // convert ULAW/ALAW formats to PCM format
-            if ((format.getEncoding() == AudioFormat.Encoding.ULAW) ||
-                    (format.getEncoding() == AudioFormat.Encoding.ALAW))
-            {
-                AudioFormat newFormat =
-                        new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
-                                format.getSampleRate(),
-                                format.getSampleSizeInBits() * 2,
-                                format.getChannels(),
-                                format.getFrameSize() * 2,
-                                format.getFrameRate(), true);  // want to use big endian format
-                // update stream and format details
-                stream = AudioSystem.getAudioInputStream(newFormat, stream);
-                System.out.println("Converted Audio format: " + newFormat);
-                format = newFormat;
+            if (audioFormat.getEncoding() == AudioFormat.Encoding.ULAW ||
+                    audioFormat.getEncoding() == AudioFormat.Encoding.ALAW) {
+
+                AudioFormat convertedFormat = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        audioFormat.getSampleRate(),
+                        audioFormat.getSampleSizeInBits() * 2,
+                        audioFormat.getChannels(),
+                        audioFormat.getFrameSize() * 2,
+                        audioFormat.getFrameRate(),
+                        true);
+
+                audioStream = AudioSystem.getAudioInputStream(convertedFormat, audioStream);
+                audioFormat = convertedFormat;
+
+                System.out.println("Audio format converted: " + convertedFormat);
             }
+
+        } catch (UnsupportedAudioFileException | IOException e) {
+            System.out.println("Error loading audio: " + e.getMessage());
+            System.exit(1);
         }
-        // Error handling
-        catch (UnsupportedAudioFileException | IOException e)
-        {
-            System.out.println(e.getMessage());
-            System.exit(0);
-        }
-    }  // end of createInput()
+    }
 
+    private static boolean isSupportedFormat() {
+        return audioFormat.getEncoding() == AudioFormat.Encoding.PCM_SIGNED ||
+                audioFormat.getEncoding() == AudioFormat.Encoding.PCM_UNSIGNED;
+    }
 
-    private static boolean isRequiredFormat()
-    // Only 8-bit PCM signed or unsigned audio can be echoed
-    {
-        return (format.getEncoding() == AudioFormat.Encoding.PCM_UNSIGNED) || (format.getEncoding() == AudioFormat.Encoding.PCM_SIGNED);
-    }  // end of isRequiredFormat()
-
-
-    private static void createOutput()
-    // set up the SourceDataLine going to the JVM's mixer
-    {
+    private static void setupAudioLine() {
         try {
-            DataLine.Info info =
-                    new DataLine.Info(SourceDataLine.class, format);
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
             if (!AudioSystem.isLineSupported(info)) {
-                System.out.println("Line does not support: " + format);
-                System.exit(0);
+                System.out.println("Audio line not supported: " + audioFormat);
+                System.exit(1);
             }
-            // get a line of the required format
-            line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(format);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            System.exit(0);
-        }
-    }  // end of createOutput()
 
+            audioLine = (SourceDataLine) AudioSystem.getLine(info);
+            audioLine.open(audioFormat);
 
-    private static byte[] getSamples(int numBytes)
-  /* Load all the samples from the AudioInputStream as a single 
-     byte array. Return a _modified_ byte array, after the
-     echo effect has been applied. */
-  {
-        // read the entire stream into samples[]
-        byte[] samples = new byte[numBytes];
-        DataInputStream dis = new DataInputStream(stream);
-        try
-        {
-            dis.readFully(samples);
+        } catch (LineUnavailableException e) {
+            System.out.println("Error initializing audio line: " + e.getMessage());
+            System.exit(1);
         }
-        catch (IOException e)
-        {
-            System.out.println(e.getMessage());
-            System.exit(0);
+    }
+
+    private static byte[] fetchAudioBytes(int numBytes) {
+        byte[] originalSamples = new byte[numBytes];
+
+        try (DataInputStream dis = new DataInputStream(audioStream)) {
+            dis.readFully(originalSamples);
+        } catch (IOException e) {
+            System.out.println("Error reading audio: " + e.getMessage());
+            System.exit(1);
         }
 
-     /* Create a byte array by applying the audio effect.
-        This line is the main point of difference from 
-        SamplesPlayer, which returns samples unchanged. */
-        return echoSamples(samples, numBytes);
-    } // end of getSamples()
+        return applyEchoEffect(originalSamples, numBytes);
+    }
 
+    private static byte[] applyEchoEffect(byte[] original, int length) {
+        int totalCopies = ECHO_COUNT + 1;
+        double currentDecay = 1.0;
 
-    private static byte[] echoSamples(byte[] samples, int numBytes)
-  /* The echo effect is ECHO_NUMBER (4) copies of the original 
-     sound added to the end of the original. 
+        byte[] modified = new byte[length * totalCopies];
 
-     The volume of each one is reduced (decayed)
-     by DECAY (0.5) over its predecessor.
-
-     The change to a byte is done by echoSample()
-  */ {
-        int numTimes = ECHO_NUMBER + 1;
-        double currDecay = 1.0;
-        short sample, newSample;
-        byte[] newSamples = new byte[numBytes * numTimes];
-
-        for (int j = 0; j < numTimes; j++)
-        {
-            for (int i = 0; i < numBytes; i++)
-                newSamples[i + (numBytes * j)] = echoSample(samples[i], currDecay);
-            currDecay *= DECAY;
+        for (int echoIndex = 0; echoIndex < totalCopies; echoIndex++) {
+            for (int i = 0; i < length; i++) {
+                modified[i + (echoIndex * length)] = applyDecay(original[i], currentDecay);
+            }
+            currentDecay *= DECAY_FACTOR;
         }
-        return newSamples;
-    }  // end of echoSamples()
 
+        return modified;
+    }
 
-    private static byte echoSample(byte sampleByte, double currDecay)
-  /* Since the effect is restricted to samples which are PCM
-     signed or unsigned, and 8-bit,  we do not have to worry
-     about big/little endian or strange byte formats.
-     The byte represents the amplitude (loudness) of the sample.
+    private static byte applyDecay(byte input, double decay) {
+        short originalSample;
+        short decayedSample;
 
-     The byte is converted to a short, divided by the decay, then
-     returned as a byte.
+        if (audioFormat.getEncoding() == AudioFormat.Encoding.PCM_UNSIGNED) {
+            originalSample = (short) (input & 0xff);
+        } else {
+            originalSample = input;
+        }
 
-     An unsigned byte needs masking as it is converted since Java 
-     stores shorts in signed form, so we cut away any excessive 
-     bits before the short is created (which uses 16 bits).
+        decayedSample = (short) (originalSample * decay);
+        return (byte) decayedSample;
+    }
 
-  */ {
-        short sample, newSample;
-        if (format.getEncoding() == AudioFormat.Encoding.PCM_UNSIGNED) {
-            sample = (short) (sampleByte & 0xff);  // unsigned 8 bit --> short
-            newSample = (short) (sample * currDecay);
-            return (byte) newSample;
-        } else if (format.getEncoding() == AudioFormat.Encoding.PCM_SIGNED) {
-            sample = sampleByte;  // signed 8 bit --> short
-            newSample = (short) (sample * currDecay);
-            return (byte) newSample;
-        } else
-            return sampleByte;    // no change
-    } // end of echoSample
+    private static void playAudio(byte[] audioBytes) {
+        InputStream inputStream = new ByteArrayInputStream(audioBytes);
+        byte[] buffer = new byte[audioLine.getBufferSize()];
+        int bytesRead;
 
+        audioLine.start();
 
-    private static void play(byte[] samples)
-  /* The samples[] byte array is connected to a stream, read in chunks, 
-     and passed to the SourceDataLine. */ {
-        // byte array --> stream
-        InputStream source = new ByteArrayInputStream(samples);
-
-        int numRead;
-        byte[] buf = new byte[line.getBufferSize()];
-
-        line.start();
-        // read and play chunks of the audio
         try {
-            while ((numRead = source.read(buf, 0, buf.length)) >= 0) {
+            while ((bytesRead = inputStream.read(buffer, 0, buffer.length)) != -1) {
                 int offset = 0;
-                while (offset < numRead)
-                    offset += line.write(buf, offset, numRead - offset);
+                while (offset < bytesRead) {
+                    offset += audioLine.write(buffer, offset, bytesRead - offset);
+                }
             }
         } catch (IOException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error during playback: " + e.getMessage());
         }
 
-        // wait until all data is played, then close the line
-        line.drain();
-        line.stop();
-        line.close();
-    }  // end of play()
-
-
-} // end of EchoSamplesPlayer class
+        audioLine.drain();
+        audioLine.stop();
+        audioLine.close();
+    }
+}
