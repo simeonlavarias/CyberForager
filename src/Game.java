@@ -3,7 +3,6 @@ import game2D.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import javax.swing.*;
-import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import javax.sound.midi.*;
 import java.awt.*;
@@ -28,9 +27,9 @@ import java.util.ArrayList;
 public class Game extends GameCore implements ActionListener, MouseListener
 {
     // width of the screen
-    private final int screenWidth = 512;
+    private final int screenWidth = 800;
     // height of the screen
-    private final int screenHeight = 384;
+    private final int screenHeight = 600;
     private Sequencer midiSequencer;
 
     // Game state flags
@@ -46,8 +45,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
     // Integer values
     private int jumpsDone = 0; // no. jumps performed this jump
     private int levelNumber = 1; // the current level the player is on
-    private int gemsCollected = 0; // the number of gems the player has collected
-    private int totalGems = 0; // the total number of gems in the level
+    private int coinsCollected = 0; // the number of gems the player has collected
+    private int totalCoins = 0; // the total number of gems in the level
     private int lifeRemaining = 3; // the amount of life the player has remaining
 
     private String portalState = ("Closed"); // the current status of the flag, i.e. can the player finish the level
@@ -122,12 +121,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
      */
     public static void main(String[] args) {
 
-//        Game game = new Game(); // Create a new instance of Game
-//
-//        game.levelNumber = 2; // Start directly on level 2
-//        game.init("level2/level2.txt"); // Load level 2
-//        State = Game.STATE.GAME; // Go directly to gameplay state
-//        game.initialiseGame(); // Initialize level data
+
 
         Game game = new Game(); // Create a new instance of Game
         game.init("level1/level1.txt"); // load the first map
@@ -156,7 +150,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
     public void initialiseGame()
     {
 
-        gemsCollected = 0; // reset variables
+        coinsCollected = 0; // reset variables
         lifeRemaining = 3;
 
         if (levelNumber == 1) // if on level 1
@@ -164,7 +158,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             // Load the tile map and print it out so we can check it is valid
             tmap.loadMap("maps/level1", "level1.txt");
 
-            totalGems = 15; // assign number of gems in this level
+            totalCoins = 15; // assign number of gems in this level
 
             player.setX(tmap.getTileXC(3, 6)); // get x & y coordinates of this tile
             player.setY(tmap.getTileYC(3, 6));
@@ -178,8 +172,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
             // Enemy 2
-            enemy2.setSpawnX(tmap.getTileXC(16, 10));
-            enemy2.setSpawnY(tmap.getTileYC(16, 10));
+            enemy2.setSpawnX(tmap.getTileXC(16, 12));
+            enemy2.setSpawnY(tmap.getTileYC(16, 12));
             enemy2.setMinPatrol(enemy2.getSpawnX() - 15);  // Moves 20 tiles left
             enemy2.setMaxPatrol(enemy2.getSpawnX() + 15);  // Moves 20 tiles right
 
@@ -211,7 +205,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             // Load the tile map and print it out so we can check it is valid
             tmap.loadMap("maps/level2", "level2.txt");
 
-            totalGems = 20;
+            totalCoins = 30;
 
             player.setX(tmap.getTileXC(1, 12)); // get x & y coordinates of this tile
             player.setY(tmap.getTileYC(1, 12));
@@ -241,6 +235,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy4.setSpawnY(tmap.getTileYC(53, 15));
             enemy4.setMinPatrol(enemy4.getSpawnX() - 10);
             enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);
+            enemy4.show();
 
             portal.setAnimation(portalAnimLevel2);
             portal.setX(tmap.getTileXC(31, 11));
@@ -263,11 +258,11 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         // Load multiple parallax backgrounds and scale to 2x screen width
         parallaxLayers = new Image[]{
-                loadAndScaleImage("images/1.png", screenWidth, screenHeight),
-                loadAndScaleImage("images/2.png", screenWidth, screenHeight),
-                loadAndScaleImage("images/3.png", screenWidth, screenHeight),
-                loadAndScaleImage("images/4.png", screenWidth, screenHeight),
-                loadAndScaleImage("images/5.png", screenWidth, screenHeight)
+                loadAndScaleImage("images/1.png"),
+                loadAndScaleImage("images/2.png"),
+                loadAndScaleImage("images/3.png"),
+                loadAndScaleImage("images/4.png"),
+                loadAndScaleImage("images/5.png")
         };
 
         // === Player Animations ===
@@ -536,7 +531,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         // Calculate camera offsets based on player position.
         int xo = (int) -player.getX() + 150;
-        int yo = (int) -player.getY() + 200;
+        int yo = (int) -player.getY() + 300;
 
         // New parallax drawing using helper method
         drawParallaxLayer(g, parallaxLayers[0], xo, 12);
@@ -568,19 +563,19 @@ public class Game extends GameCore implements ActionListener, MouseListener
             // Draw the tile map (main game world).
             tmap.draw(g, xo, yo);
 
-            // Draw foreground clouds (parallax effect).
-
             // Draw score and flag status.
             g.setColor(Color.white);
-            String scoreMsg = String.format("Score: %d / %d", gemsCollected, totalGems);
-            g.drawString(scoreMsg, getWidth() - 160, 60);
+            String coinMessage = String.format("Coins: %d / %d", coinsCollected, totalCoins);
+            g.drawString(coinMessage, getWidth() - 170, 60); // Align score near top-right
 
-            String flagMsg = "Portal: " + portalState;
-            g.drawString(flagMsg, (getWidth() / 2) - 105, 60);
+            String portalMessage = "Portal: " + portalState;
+            g.drawString(portalMessage, (getWidth() / 2) - 90, 60); // Keep portal message centered
 
-            // Draw player hearts (life remaining).
-            int heartX = 20;
+            // Draw player hearts (life remaining)
             int heartY = 40;
+            int heartSpacing = screenWidth / 30; // ~26px if screenWidth is 800
+            int heartX = screenWidth / 40;       // ~20px starting X position
+
             ArrayList<Image> life = new ArrayList<>();
             life.add(heart1);
             life.add(heart2);
@@ -588,7 +583,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
             for (int i = 0; i < lifeRemaining; i++) {
                 g.drawImage(life.get(i), heartX, heartY, null);
-                heartX += 30; // Space between hearts.
+                heartX += heartSpacing; // Responsive spacing
             }
 
             return;
@@ -599,7 +594,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             g.setColor(Color.BLACK); // Set background to black
             g.fillRect(0, 0, getWidth(), getHeight()); // Fill screen with black
 
-            // "Game Over" text
+            // === "Game Over" title ===
             g.setColor(Color.RED);
             g.setFont(new Font("Arial", Font.BOLD, 48));
             String message = "Game Over";
@@ -608,31 +603,21 @@ public class Game extends GameCore implements ActionListener, MouseListener
             int y = getHeight() / 2 - 50;
             g.drawString(message, x, y);
 
-            // "Press R to Restart" text
-            g.setColor(Color.WHITE);
+            // === "Press R to Restart" aligned below title ===
             g.setFont(new Font("Arial", Font.PLAIN, 24));
+            FontMetrics restartFM = g.getFontMetrics();
             String restartMessage = "Press R to Restart";
-
-            // Move further right (change 150 to any value you prefer)
-            int rx = (getWidth() - fm.stringWidth(restartMessage)) / 2 + 105;
-            int ry = getHeight() - 50;  // 50 pixels from bottom
-            g.drawString(restartMessage, rx, ry);
-
-
-
+            int restartX = (getWidth() - restartFM.stringWidth(restartMessage)) / 2;
+            int restartY = y + restartFM.getHeight() + 60;
+            g.setColor(Color.WHITE);
+            g.drawString(restartMessage, restartX, restartY);
         }
 
-//        else if (State == STATE.HELP) {
-//            help.render(g);
-//        }
-//        else if (State == STATE.COMPLETE) {
-//            complete.render(g);
-//        }
         else if (State == STATE.MISSION_SUCCESS) {
             g.setColor(Color.BLACK); // Black background
             g.fillRect(0, 0, getWidth(), getHeight());
 
-            // === "Mission Success!" ===
+            // === "Mission Success!" title ===
             g.setColor(Color.GREEN);
             g.setFont(new Font("Arial", Font.BOLD, 48));
             String message = "Mission Success!";
@@ -641,14 +626,14 @@ public class Game extends GameCore implements ActionListener, MouseListener
             int y = getHeight() / 2 - 50;
             g.drawString(message, x, y);
 
-            // === "Press R to Restart" ===
-            g.setColor(Color.WHITE);
+            // === "Press R to Restart" aligned below title ===
             g.setFont(new Font("Arial", Font.PLAIN, 24));
+            FontMetrics restartFM = g.getFontMetrics();
             String restartMessage = "Press R to Restart";
-            FontMetrics fmRestart = g.getFontMetrics(); // get new metrics for the smaller font
-            int rx = (getWidth() - fmRestart.stringWidth(restartMessage)) / 2;
-            int ry = getHeight() - 50;
-            g.drawString(restartMessage, rx, ry);
+            int restartX = (getWidth() - restartFM.stringWidth(restartMessage)) / 2;
+            int restartY = y + restartFM.getHeight() + 60;
+            g.setColor(Color.WHITE);
+            g.drawString(restartMessage, restartX, restartY);
         }
 
     }
@@ -686,12 +671,13 @@ public class Game extends GameCore implements ActionListener, MouseListener
     // Method to reset the variables at the end of the game
     public void resetVariables()
     {
-        // reset and adjust variables as above for level 1..
-        gemsCollected = 0;
+        coinsCollected = 0; // reset variables
         lifeRemaining = 3;
-        init("level1/level1.txt"); // load the first level again
 
-        totalGems = 15;
+        // Load the tile map and print it out so we can check it is valid
+        tmap.loadMap("maps/level1", "level1.txt");
+
+        totalCoins = 15; // assign number of gems in this level
 
         player.setX(tmap.getTileXC(3, 6)); // get x & y coordinates of this tile
         player.setY(tmap.getTileYC(3, 6));
@@ -699,32 +685,33 @@ public class Game extends GameCore implements ActionListener, MouseListener
         player.setVelocityY(0);
 
         // Enemy 1
-        enemy1.setSpawnX(tmap.getTileXC(10, 5));
-        enemy1.setSpawnY(tmap.getTileYC(10, 5));
+        enemy1.setSpawnX(tmap.getTileXC(11, 4));
+        enemy1.setSpawnY(tmap.getTileYC(11, 4));
         enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
         enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
-        // Enemy 2 - Middle platform near "/TGT\"
-        enemy2.setSpawnX(tmap.getTileXC(12, 14));
-        enemy2.setSpawnY(tmap.getTileYC(12, 14));
-        enemy2.setMinPatrol(enemy2.getSpawnX() - 10);  // Moves 10 tiles left
-        enemy2.setMaxPatrol(enemy2.getSpawnX() + 10);  // Moves 10 tiles right
+        // Enemy 2
+        enemy2.setSpawnX(tmap.getTileXC(16, 12));
+        enemy2.setSpawnY(tmap.getTileYC(16, 12));
+        enemy2.setMinPatrol(enemy2.getSpawnX() - 15);  // Moves 20 tiles left
+        enemy2.setMaxPatrol(enemy2.getSpawnX() + 15);  // Moves 20 tiles right
 
-        // Enemy 3 - Ground near "LDDDR"
-        enemy3.setSpawnX(tmap.getTileXC(18, 8));
-        enemy3.setSpawnY(tmap.getTileYC(18, 8));
-        enemy3.setMinPatrol(enemy3.getSpawnX() - 20);  // Moves 20 tiles left
-        enemy3.setMaxPatrol(enemy3.getSpawnX() + 20);  // Moves 20 tiles right
+        // Enemy 3
+        enemy3.setSpawnX(tmap.getTileXC(36, 17));
+        enemy3.setSpawnY(tmap.getTileYC(36, 17));
+        enemy3.setMinPatrol(enemy3.getSpawnX() - 10);  // Moves 10 tiles left
+        enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);  // Moves 10 tiles right
 
-        // Enemy 4 - Far right near the bottom
-        enemy4.setSpawnX(tmap.getTileXC(36, 17));
-        enemy4.setSpawnY(tmap.getTileYC(36, 17));
-        enemy4.setMinPatrol(enemy4.getSpawnX() - 10);  // Moves 10 tiles left
-        enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
+        // Hide Enemy 4
+        enemy4.hide();
+        enemy4.stop();
+        enemy4.setX(-9999); // move it offscreen
+        enemy4.setY(-9999);
 
-        // set the spawn points of the red and green flag (start and finish)
-        portal.setX(tmap.getTileXC(61, 1));
-        portal.setY(tmap.getTileYC(61, 1));
+            // set the spawn points of the red and green flag (start and finish)
+            portal.setAnimation(portalAnimLevel1);
+            portal.setX(tmap.getTileXC(61, 1));
+            portal.setY(tmap.getTileYC(61, 1));
     }
 
     /**
@@ -794,11 +781,11 @@ public class Game extends GameCore implements ActionListener, MouseListener
         {
             Sound collect = new Sound("sounds/coin_collect.wav"); // Load collect sound
             collect.start(); // Run thread
-            gemsCollected++; // increment gems collected by the appropriate value
+            coinsCollected++; // increment gems collected by the appropriate value
             tmap.setTileChar('.', tileX, tileY - 1); // Replace the gem with an empty space
         }
 
-        if (gemsCollected == 1) // Once the player has collected half of the gems
+        if (coinsCollected == totalCoins)
         {
             portalState = ("Open"); // Set portal state to open
             portal.show(); // Show the portal
@@ -1082,7 +1069,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
         {
             levelNumber++; // increment level number
             System.out.println("Level 1 Done!"); // inform user they successfully finished the level
-            gemsCollected = 0; // reset the collected gems variable (otherwise the next level will instantly spawn the green flag)
+            coinsCollected = 0; // reset the collected gems variable (otherwise the next level will instantly spawn the green flag)
             portalState = "Closed"; // reset flag status
             init("level2/level2.txt"); // load level 2
             initialiseGame(); // re-initialise the game
@@ -1098,7 +1085,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             sound.echo("win.wav"); // Play win sound with echo
 
             levelNumber = 1; // Reset for next playthrough
-            gemsCollected = 0;
+            coinsCollected = 0;
             portalState = "Closed";
             Game.State = Game.STATE.MISSION_SUCCESS; // Immediately switch to mission success screen
         }
@@ -1184,17 +1171,17 @@ public class Game extends GameCore implements ActionListener, MouseListener
     }
 
     // 🔧 Helper method to load and safely scale images
-    private BufferedImage loadAndScaleImage(String path, int width, int height) {
+    private BufferedImage loadAndScaleImage(String path) {
         try {
             Image img = Toolkit.getDefaultToolkit().getImage(path);
             MediaTracker tracker = new MediaTracker(new java.awt.Container());
             tracker.addImage(img, 0);
             tracker.waitForID(0);
 
-            BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage scaled = new BufferedImage(800, 600, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = scaled.createGraphics();
             g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2d.drawImage(img, 0, 0, width, height, null);
+            g2d.drawImage(img, 0, 0, 800, 600, null);
             g2d.dispose();
             return scaled;
         } catch (Exception e) {
