@@ -62,8 +62,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private Animation jumping_left;
     private Animation falling_right;
     private Animation falling_left;
-    private Animation hurt_right;
-    private Animation hurt_left;
     private Animation enemy_running_left;
     private Animation enemy_running_right;
     private Animation attack_right;
@@ -84,11 +82,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private final TileMap tmap = new TileMap();    // Our tile map, note that we load it in init()
     public float postX;
     public float postY;
-
-    // Variables for hurt animation
-    private boolean isHurt = false;
-    private long hurtStartTime = 0;
-    private final long hurtDuration = 700; // milliseconds
 
     // Images
     private Image[] parallaxLayers; // Array to store multiple background layers
@@ -184,17 +177,23 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy1.setMinPatrol(enemy1.getSpawnX() - 15);  // Moves 15 tiles left
             enemy1.setMaxPatrol(enemy1.getSpawnX() + 15);  // Moves 15 tiles right
 
-            // Enemy 3 - Ground near "LDDDR"
-            enemy2.setSpawnX(tmap.getTileXC(16, 8));
-            enemy2.setSpawnY(tmap.getTileYC(16, 8));
-            enemy2.setMinPatrol(enemy3.getSpawnX() - 15);  // Moves 20 tiles left
-            enemy2.setMaxPatrol(enemy3.getSpawnX() + 15);  // Moves 20 tiles right
+            // Enemy 2
+            enemy2.setSpawnX(tmap.getTileXC(16, 10));
+            enemy2.setSpawnY(tmap.getTileYC(16, 10));
+            enemy2.setMinPatrol(enemy2.getSpawnX() - 15);  // Moves 20 tiles left
+            enemy2.setMaxPatrol(enemy2.getSpawnX() + 15);  // Moves 20 tiles right
 
-            // Enemy 4 - Far right near the bottom
+            // Enemy 3
             enemy3.setSpawnX(tmap.getTileXC(36, 17));
             enemy3.setSpawnY(tmap.getTileYC(36, 17));
-            enemy3.setMinPatrol(enemy4.getSpawnX() - 10);  // Moves 10 tiles left
-            enemy3.setMaxPatrol(enemy4.getSpawnX() + 10);  // Moves 10 tiles right
+            enemy3.setMinPatrol(enemy3.getSpawnX() - 10);  // Moves 10 tiles left
+            enemy3.setMaxPatrol(enemy3.getSpawnX() + 10);  // Moves 10 tiles right
+
+            // Hide Enemy 4
+            enemy4.hide();
+            enemy4.stop();
+            enemy4.setX(-9999); // move it offscreen
+            enemy4.setY(-9999);
 
             // set the spawn points of the red and green flag (start and finish)
             portal.setAnimation(portalAnimLevel1);
@@ -280,8 +279,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
         jumping_left = loadAnimation("cyborg_jump_left.png", 4, 600);
         attack_right = loadAnimation("cyborg_attack_right.png", 8, 100);
         attack_left = loadAnimation("cyborg_attack_left.png", 8, 100);
-        hurt_right = loadAnimation("cyborg_hurt_right.png", 2, 200); // Adjust frame count and speed
-        hurt_left = loadAnimation("cyborg_hurt_left.png", 2, 200);
         falling_right = jumping_right;
         falling_left = jumping_left;
 
