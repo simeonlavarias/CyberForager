@@ -15,29 +15,41 @@ import java.util.ArrayList;
 
 public class Game extends GameCore implements ActionListener, MouseListener
 {
-    private final int screenWidth = 800;
-    private final int screenHeight = 600;
+    // === Screen Configuration ===
+    private final int screenWidth = 800;   // Width of the game window
+    private final int screenHeight = 600;  // Height of the game window
 
-    private Sequencer midiSequencer;
-    private boolean jump = false;
-    private boolean left = false;
-    private boolean right = false;
-    private boolean decelerate = false;
-    private boolean canJump = true;
-    private boolean touchingGround = false;
-    private boolean lastDirectionRight = true;
-    private boolean attacking = false;
-    private boolean fadingIn = true;
-    private long loadingStartTime = 0;
-    private float alpha = 0.0f;
+    // === Audio ===
+    private Sequencer midiSequencer;       // Background music sequencer (MIDI player)
 
-    private int jumpsDone = 0;
-    private int levelNumber = 1;
-    private int coinsCollected = 0;
-    private int totalCoins = 0;
-    private int lifeRemaining = 3;
+    // === Player Control Flags ===
+    private boolean jump = false;          // Indicates if jump key is pressed
+    private boolean left = false;          // Indicates if left movement is active
+    private boolean right = false;         // Indicates if right movement is active
+    private boolean decelerate = false;    // Indicates if player should decelerate
+    private boolean canJump = true;        // Determines if player is allowed to jump
+    private boolean touchingGround = false;// True when player is grounded
+    private boolean lastDirectionRight = true; // Tracks the last direction faced (true = right)
+    private boolean attacking = false;     // True if player is in attack animation
 
-    private String portalState = ("Closed");
+    // === Fade-in Effect (Start Screen) ===
+    private boolean fadingIn = true;       // Controls logo fade-in effect
+    private float alpha = 0.0f;            // Transparency level of logo (0.0 = invisible, 1.0 = fully visible)
+
+    // === Game State Timing ===
+    private long loadingStartTime = 0;     // Used to measure loading screen duration
+
+    // === Game Progress Tracking ===
+    private int jumpsDone = 0;             // Number of jumps completed in current jump session
+    private int levelNumber = 1;           // Current level number
+    private int coinsCollected = 0;        // Total coins collected by the player
+    private int totalCoins = 0;            // Total number of coins available in the level
+    private int lifeRemaining = 3;         // Player's remaining lives
+
+    // === Portal ===
+    private String portalState = "Closed"; // Current portal state (Closed/Open)
+
+    // === Animations ===
     private Animation standing_right;
     private Animation standing_left;
     private Animation running_right;
@@ -53,6 +65,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private Animation portalAnimLevel1;
     private Animation portalAnimLevel2;
 
+    // === Sprites ===
     private Sprite player = null;
     private Sprite enemy1 = null;
     private Sprite enemy2 = null;
@@ -60,51 +73,77 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private Sprite enemy4 = null;
     private Sprite portal = null;
 
-    private final TileMap tmap = new TileMap();
+    // === Tile Map ===
+    private final TileMap tmap = new TileMap();  // The game's tile map
+
+    // Used for collision detection when moving left/right
     public float postX;
     public float postY;
 
-    private Image[] parallaxLayersLevel1;
-    private Image[] parallaxLayersLevel2;
-    private Image heart1;
-    private Image heart2;
-    private Image heart3;
-    private Image logo;
+    // === Images ===
+    private Image[] parallaxLayersLevel1;  // Parallax backgrounds for level 1
+    private Image[] parallaxLayersLevel2;  // Parallax backgrounds for level 2
+    private Image heart1;                  // Heart icon for 1 life
+    private Image heart2;                  // Heart icon for 2 lives
+    private Image heart3;                  // Heart icon for 3 lives
+    private Image logo;                    // Game logo for the start screen
 
-    int yT;
-    int xT;
-    int xB;
-    int yB;
-    int xR;
-    int yR;
-    int xL;
-    int yL;
+    // === Tile Coordinates for Collision Checks ===
+    int yT, xT;  // Tile above player
+    int xB, yB;  // Tile below player
+    int xR, yR;  // Tile to the right of player
+    int xL, yL;  // Tile to the left of player
 
-    public static STATE State = STATE.START;
+    // === Game State ===
+    public static STATE State = STATE.START;  // Initial game state
 
-    // Entry Point & Lifecycle of Game
+    // === Entry Point ===
+
+    /**
+     * The entry point of the game.
+     * Initializes the game, loads the level, starts background music,
+     * and launches the game loop.
+     */
     public static void main(String[] args) {
+        // Create a new instance of the Game class
         Game game = new Game();
+
+        // Load the first level map
         game.init("level1.txt");
+
         try {
+            // Initialize and start the MIDI background music
             game.midiSequencer = MidiSystem.getSequencer();
             game.midiSequencer.open();
             Sequence theme = MidiSystem.getSequence(new File("sounds/theme.mid"));
             game.midiSequencer.setSequence(theme);
-            game.midiSequencer.setLoopCount(Sequencer.LOOP_CONTINUOUSLY);
+            game.midiSequencer.setLoopCount(Sequencer.LOOP_CONTINUOUSLY); // Loop music
             game.midiSequencer.start();
+
+            // Play startup sound effect
             new Sound("sounds/game_start.wav").start();
+
         } catch (MidiUnavailableException | IOException | InvalidMidiDataException e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Print any errors if loading music fails
         }
 
+        // Start the game loop with defined screen size
         int screenWidth = game.screenWidth;
         int screenHeight = game.screenHeight;
         game.run(false, screenWidth, screenHeight);
     }
 
+    /**
+     * Initializes the game: loads the level, background layers,
+     * animations, sprites, and other assets. Also sets up listeners.
+     *
+     * @param map The name of the map file to load
+     */
     public void init(String map) {
+        // === Load Start Screen Logo ===
         logo = new ImageIcon("images/Logo/cyber_forager_logo.png").getImage();
+
+        // === Load the Tile Map based on the level number ===
         if (levelNumber == 1) {
             tmap.loadMap("maps/level1", map);
         } else if (levelNumber == 2) {
@@ -113,6 +152,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         System.out.println("🗺️ [Game] Current levelNumber = " + levelNumber);
 
+        // === Load Parallax Background Layers ===
         parallaxLayersLevel1 = new Image[]{
                 loadAndScaleImage("images/level1_bg/1.png"),
                 loadAndScaleImage("images/level1_bg/2.png"),
@@ -129,6 +169,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 loadAndScaleImage("images/level2_bg/5.png")
         };
 
+        // === Load Player Animations ===
         standing_right = loadAnimation("cyborg_standing_right.png", 4, 600);
         standing_left = loadAnimation("cyborg_standing_left.png", 4, 600);
         running_right = loadAnimation("cyborg_run_right.png", 6, 120);
@@ -140,12 +181,15 @@ public class Game extends GameCore implements ActionListener, MouseListener
         falling_right = jumping_right;
         falling_left = jumping_left;
 
+        // === Load Enemy Animations ===
         enemy_running_left = loadAnimation("anim_enemy_running_left.png", 4, 400);
         enemy_running_right = loadAnimation("anim_enemy_running_right.png", 4, 400);
 
+        // === Load Portal Animations ===
         portalAnimLevel1 = loadAnimation("portal1.png", 9, 50);
         portalAnimLevel2 = loadAnimation("portal2.png", 8, 50);
 
+        // === Create Sprites ===
         player = new Sprite(standing_right);
         enemy1 = new Sprite(enemy_running_right);
         enemy2 = new Sprite(enemy_running_right);
@@ -153,31 +197,43 @@ public class Game extends GameCore implements ActionListener, MouseListener
         enemy4 = new Sprite(enemy_running_right);
         portal = new Sprite(portalAnimLevel1);
 
+        // === Initialize Game State (positions, enemies, etc.) ===
         initialiseGame();
 
+        // Print tile map to console for debugging
         System.out.println(tmap);
 
+        // === Load UI Assets (Hearts) ===
         heart1 = loadImage("images/Heart.png").getScaledInstance(25, 22, Image.SCALE_DEFAULT);
         heart2 = heart1;
         heart3 = heart1;
 
+        // === Register Mouse Listener ===
         addMouseListener(this);
     }
 
+    /**
+     * Sets up the initial state of the game for the current level.
+     * Resets player position, enemy positions and patrol areas, portal status,
+     * and collected items. Handles logic for both Level 1 and Level 2.
+     */
     public void initialiseGame() {
 
+        // === Reset game progress ===
         coinsCollected = 0;
         lifeRemaining = 3;
 
-        if (levelNumber == 1)
-        {
-            totalCoins = 15;
+        // === Level 1 Setup ===
+        if (levelNumber == 1) {
+            totalCoins = 15;  // Total number of coins in Level 1
 
+            // Set player spawn position
             player.setX(tmap.getTileXC(3, 6));
             player.setY(tmap.getTileYC(3, 6));
             player.setVelocityX(0);
             player.setVelocityY(0);
 
+            // === Enemy Setup for Level 1 ===
             enemy1.setSpawnX(tmap.getTileXC(12, 5));
             enemy1.setSpawnY(tmap.getTileYC(12, 5));
             enemy1.setMinPatrol(enemy1.getSpawnX() - 15);
@@ -193,29 +249,35 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy3.setMinPatrol(enemy3.getSpawnX() - 8);
             enemy3.setMaxPatrol(enemy3.getSpawnX() + 8);
 
+            // Enemy 4 is not used in Level 1
             enemy4.hide();
             enemy4.stop();
-            enemy4.setX(-9999);
+            enemy4.setX(-9999);  // Move off-screen
             enemy4.setY(-9999);
 
+            // Setup portal for Level 1
             portal.setAnimation(portalAnimLevel1);
             portal.setX(tmap.getTileXC(61, 3));
             portal.setY(tmap.getTileYC(61, 3));
         }
-        else if (levelNumber == 2)
-        {
+
+        // === Level 2 Setup ===
+        else if (levelNumber == 2) {
+            // Debug: Check if level2.txt exists
             File file = new File("maps/level2/level2.txt");
             if (!file.exists()) {
                 System.out.println("ERROR: level2.txt file not found at " + file.getAbsolutePath());
             }
 
-            totalCoins = 30;
+            totalCoins = 30;  // Total coins in Level 2
 
+            // Set player spawn position
             player.setX(tmap.getTileXC(1, 10));
             player.setY(tmap.getTileYC(1, 10));
             player.setVelocityX(0);
             player.setVelocityY(0);
 
+            // === Enemy Setup for Level 2 ===
             enemy1.setSpawnX(tmap.getTileXC(5, 12));
             enemy1.setSpawnY(tmap.getTileYC(5, 12));
             enemy1.setMinPatrol(enemy1.getSpawnX() - 10);
@@ -239,26 +301,37 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy4.setY(enemy4.getSpawnY());
             enemy4.show();
 
+            // Setup portal for Level 2
             portal.setAnimation(portalAnimLevel2);
             portal.setX(tmap.getTileXC(31, 11));
             portal.setY(tmap.getTileYC(31, 11));
         }
+
+        // === Reset Enemy States ===
         resetEnemies();
     }
 
+    /**
+     * Resets the game state after death or full restart.
+     * Loads Level 1 and reinitializes player and enemy positions,
+     * as well as collectibles and portal.
+     */
     public void resetGame() {
+        // === Reset Game Progress ===
         coinsCollected = 0;
         lifeRemaining = 3;
 
+        // === Reload Level 1 Map ===
         tmap.loadMap("maps/level1", "level1.txt");
-
         totalCoins = 15;
 
+        // === Reset Player Position and Velocity ===
         player.setX(tmap.getTileXC(3, 6));
         player.setY(tmap.getTileYC(3, 6));
         player.setVelocityX(0);
         player.setVelocityY(0);
 
+        // === Enemy Setup (Same as Level 1) ===
         enemy1.setSpawnX(tmap.getTileXC(12, 5));
         enemy1.setSpawnY(tmap.getTileYC(12, 5));
         enemy1.setMinPatrol(enemy1.getSpawnX() - 15);
@@ -274,64 +347,95 @@ public class Game extends GameCore implements ActionListener, MouseListener
         enemy3.setMinPatrol(enemy3.getSpawnX() - 8);
         enemy3.setMaxPatrol(enemy3.getSpawnX() + 8);
 
+        // Enemy 4 is hidden and disabled in Level 1
         enemy4.hide();
         enemy4.stop();
-        enemy4.setX(-9999);
+        enemy4.setX(-9999); // Move off-screen
         enemy4.setY(-9999);
 
+        // === Reset Portal ===
         portal.setAnimation(portalAnimLevel1);
         portal.setX(tmap.getTileXC(61, 1));
         portal.setY(tmap.getTileYC(61, 1));
 
+        // === Reset Enemy States ===
         resetEnemies();
     }
 
+    /**
+     * Handles level completion logic.
+     * If Level 1 is completed, transition to Level 2.
+     * If Level 2 is completed, stop the music, play the win sound,
+     * and switch to the mission success screen.
+     */
     public void finishLevel() {
-        if (levelNumber == 1)
-        {
-            levelNumber = 2;
+
+        // === Transition from Level 1 to Level 2 ===
+        if (levelNumber == 1) {
+            levelNumber = 2;                 // Advance to next level
             System.out.println("Level 1 Done!");
-            coinsCollected = 0;
-            portalState = "Closed";
+            coinsCollected = 0;             // Reset collected coins
+            portalState = "Closed";         // Reset portal
             System.out.println("🚀 [Game] Transitioning to Level 2...");
-            init("level2.txt");
-            initialiseGame();
+
+            init("level2.txt");             // Load level 2 map
+            initialiseGame();               // Re-initialize game state for Level 2
         }
+
+        // === End of Game: Level 2 Completed ===
         else if (levelNumber == 2) {
             System.out.println("Mission Success");
 
+            // Stop background music if still playing
             if (midiSequencer != null && midiSequencer.isRunning()) {
                 midiSequencer.stop();
             }
 
+            // Play win sound with echo effect
             Sound sound = new Sound("win.wav");
             sound.echo("win.wav");
 
+            // Reset state for replay
             levelNumber = 1;
             coinsCollected = 0;
             portalState = "Closed";
+
+            // Switch to mission success screen
             Game.State = Game.STATE.MISSION_SUCCESS;
         }
     }
 
-    // Game Loop
+    // === Game Loop ===
+
+    /**
+     * Main game loop update method.
+     * Updates game logic depending on the current state:
+     * START, LOADING, or GAME.
+     *
+     * @param elapsed Time elapsed since last update call (in milliseconds)
+     */
     public void update(long elapsed) {
+
+        // === Handle Start Screen State ===
         if (State == STATE.START) {
-            updateStarter();
-            return;
+            updateStarter();  // Update fade-in effect
+            return;           // Skip the rest of the game logic
         }
 
+        // === Handle Loading Screen State ===
         if (State == STATE.LOADING) {
-            int loadingDuration = 5000;
+            int loadingDuration = 5000;  // 5 seconds
             if (System.currentTimeMillis() - loadingStartTime >= loadingDuration) {
-                State = STATE.GAME;
-                initialiseGame();
+                State = STATE.GAME;      // Transition to game
+                initialiseGame();        // Setup the level
             }
             return;
         }
 
-        if (State == STATE.GAME)
-        {
+        // === Main Game Logic (During Gameplay) ===
+        if (State == STATE.GAME) {
+
+            // === Prepare Sprite List (Player + Enemies) ===
             ArrayList<Sprite> sprites = new ArrayList<>();
             sprites.add(player);
             sprites.add(enemy1);
@@ -339,65 +443,74 @@ public class Game extends GameCore implements ActionListener, MouseListener
             sprites.add(enemy3);
             sprites.add(enemy4);
 
-            for (Sprite s : sprites)
-            {
+            // === Apply Gravity to All Sprites ===
+            for (Sprite s : sprites) {
                 float gravity = 0.0010f;
                 s.setVelocityY(s.getVelocityY() + (gravity * elapsed));
             }
 
+            // === Player Movement & Collision ===
             player.setAnimationSpeed(1.0f);
             checkTileCollision(player);
-
             handlePlayerMovement(elapsed);
 
+            // === Handle Enemy Patrol Movement ===
             ArrayList<Sprite> enemies = new ArrayList<>();
             enemies.add(enemy1);
             enemies.add(enemy2);
             enemies.add(enemy3);
             enemies.add(enemy4);
 
-            for (Sprite enemy : enemies)
-            {
-                if ((enemy.getX() > enemy.getMaxPatrol() && enemy.getDirection()) || (enemy.getX() < enemy.getMinPatrol() && !enemy.getDirection()))  // if the enemy hits the patrol area edge
-                {
+            for (Sprite enemy : enemies) {
+                // Reverse direction when reaching patrol bounds
+                if ((enemy.getX() > enemy.getMaxPatrol() && enemy.getDirection()) ||
+                        (enemy.getX() < enemy.getMinPatrol() && !enemy.getDirection())) {
                     enemy.setDirection(!enemy.getDirection());
                 }
-                if (enemy.getDirection())
-                {
+
+                // Apply velocity and animation based on direction
+                if (enemy.getDirection()) {
                     enemy.setVelocityX(0.02f);
                     enemy.setAnimation(enemy_running_right);
-                }
-                else
-                {
+                } else {
                     enemy.setVelocityX(-0.02f);
                     enemy.setAnimation(enemy_running_left);
                 }
-                enemy.update(elapsed);
+
+                enemy.update(elapsed); // Update enemy movement
             }
 
-            for (Sprite s : sprites)
-            {
+            // === Update All Sprite Animations ===
+            for (Sprite s : sprites) {
                 s.update(elapsed);
             }
 
+            // === Update Portal Animation ===
             portal.update(elapsed);
 
-            for (Sprite s : sprites)
-            {
+            // === Check Collisions for All Sprites ===
+            for (Sprite s : sprites) {
                 handleTileMapCollisions(s);
             }
 
+            // === Keep Player Within Bounds of Map ===
             handleScreenEdge(player, tmap);
+
+            // === Handle Collisions Between Player and Enemies/Portal ===
             handleSpriteCollisions();
 
-            if (lifeRemaining == 0)
-            {
+            // === Check Player Life ===
+            if (lifeRemaining == 0) {
+                // Play death sound and reset game
                 Sound sound = new Sound("sounds/robot_death.wav");
                 sound.start();
                 System.out.println("You died!");
+
                 levelNumber = 1;
                 resetGame();
                 Game.State = Game.STATE.DEAD;
+
+                // Stop background music
                 if (midiSequencer != null && midiSequencer.isRunning()) {
                     midiSequencer.stop();
                 }
@@ -405,31 +518,44 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
     }
 
+    /**
+     * Renders the game depending on the current state:
+     * START, LOADING, GAME, DEAD, or MISSION_SUCCESS.
+     *
+     * @param g The graphics context to draw onto
+     */
     public void draw(Graphics2D g) {
 
+        // === Start Screen ===
         if (State == STATE.START) {
             renderStarter(g);
             return;
         }
 
+        // === Set Camera Offset Based on Player Position ===
         int xo = (int) -player.getX() + 150;
         int yo = (int) -player.getY() + 300;
 
+        // === Select Background Based on Level ===
         Image[] currentBackground = (levelNumber == 1) ? parallaxLayersLevel1 : parallaxLayersLevel2;
 
+        // === Draw Parallax Background Layers ===
         drawParallaxLayer(g, currentBackground[0], xo, 12);
         drawParallaxLayer(g, currentBackground[1], xo, 9);
         drawParallaxLayer(g, currentBackground[2], xo, 6);
         drawParallaxLayer(g, currentBackground[3], xo, 3);
         drawParallaxLayer(g, currentBackground[4], xo, 2);
 
+        // === Loading Screen ===
         if (State == STATE.LOADING) {
             renderLoading(g);
             return;
         }
 
+        // === Main Game Rendering ===
         if (State == STATE.GAME) {
 
+            // Collect sprites for rendering
             ArrayList<Sprite> sprites = new ArrayList<>();
             sprites.add(player);
             sprites.add(enemy1);
@@ -437,30 +563,34 @@ public class Game extends GameCore implements ActionListener, MouseListener
             sprites.add(enemy3);
             sprites.add(enemy4);
 
+            // === Draw Tile Map and Decorative Tiles ===
             tmap.draw(g, xo, yo);
-
             for (TileMap.DecorativeTile dt : tmap.getDecorativeTiles()) {
                 g.drawImage(dt.image, dt.x + xo, dt.y + yo, null);
             }
 
+            // === Draw Sprites ===
             for (Sprite s : sprites) {
-                s.setOffsets(xo, yo);
-                checkOnScreen(g, s, xo, yo);
+                s.setOffsets(xo, yo);            // Apply camera offset
+                checkSpriteVisible(g, s, xo, yo);     // Only draw if visible
             }
 
+            // === Draw Portal ===
             portal.setOffsets(xo, yo);
             portal.draw(g);
 
+            // === UI: Coins Collected and Portal Status ===
             g.setColor(Color.white);
             String coinMessage = String.format("Coins: %d / %d", coinsCollected, totalCoins);
-            g.drawString(coinMessage, getWidth() - 170, 60);
+            g.drawString(coinMessage, getWidth() - 170, 60);  // Top-right
 
             String portalMessage = "Portal: " + portalState;
-            g.drawString(portalMessage, (getWidth() / 2) - 90, 60);
+            g.drawString(portalMessage, (getWidth() / 2) - 90, 60);  // Centered
 
+            // === UI: Life/Hearts ===
             int heartY = 40;
-            int heartSpacing = screenWidth / 30;
-            int heartX = screenWidth / 40;
+            int heartSpacing = screenWidth / 30;  // Evenly spaced
+            int heartX = screenWidth / 40;        // Left side
 
             ArrayList<Image> life = new ArrayList<>();
             life.add(heart1);
@@ -475,6 +605,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             return;
         }
 
+        // === Game Over Screen ===
         if (State == STATE.DEAD) {
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -496,6 +627,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             g.drawString(restartMessage, restartX, restartY);
         }
 
+        // === Mission Success Screen ===
         else if (State == STATE.MISSION_SUCCESS) {
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -516,93 +648,148 @@ public class Game extends GameCore implements ActionListener, MouseListener
             g.setColor(Color.WHITE);
             g.drawString(restartMessage, restartX, restartY);
         }
-
     }
 
-    // Rendering Utilities
+    // === Rendering Utilities ===
+
+    /**
+     * Renders the loading screen with a centered "Loading..." message.
+     *
+     * @param g The graphics context used for drawing
+     */
     private void renderLoading(Graphics2D g) {
+        // Fill the background with black
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, getWidth(), getHeight());
 
+        // Set font and color for the loading message
         g.setFont(new Font("Arial", Font.BOLD, 22));
         g.setColor(Color.WHITE);
+
+        // Center the text horizontally and vertically
         String message = "Loading...";
         FontMetrics fm = g.getFontMetrics();
         int x = (getWidth() - fm.stringWidth(message)) / 2;
         int y = getHeight() / 2;
+
+        // Draw the loading message
         g.drawString(message, x, y);
     }
 
+    /**
+     * Renders the game’s start screen with a fade-in logo
+     * and a prompt to click when the logo is fully visible.
+     *
+     * @param g The graphics context used for drawing
+     */
     private void renderStarter(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
 
+        // === Fill background with solid black ===
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, screenWidth, screenHeight);
 
+        // === Set transparency for logo fade-in effect ===
         AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha);
         g2d.setComposite(ac);
 
+        // === Center and draw the logo image ===
         int logoX = (screenWidth - logo.getWidth(null)) / 2;
         int logoY = (screenHeight - logo.getHeight(null)) / 3;
         g2d.drawImage(logo, logoX, logoY, null);
 
+        // === Display "Click Anywhere to Start" message when fade-in is complete ===
         if (alpha >= 1.0f) {
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)); // Full opacity
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 24));
+
             String message = "Click Anywhere to Start";
             FontMetrics fm = g2d.getFontMetrics();
             int msgWidth = fm.stringWidth(message);
             int textX = (screenWidth - msgWidth) / 2;
             int textY = logoY + logo.getHeight(null) + 50;
+
             g2d.drawString(message, textX, textY);
         }
     }
 
+    /**
+     * Draws a horizontally scrolling parallax background layer.
+     *
+     * @param g            The graphics context for rendering
+     * @param img          The image used for the parallax layer
+     * @param xo           The horizontal camera offset
+     * @param scrollFactor The speed factor (higher = slower movement, creates depth)
+     */
     private void drawParallaxLayer(Graphics2D g, Image img, int xo, int scrollFactor) {
-        int layerWidth = img.getWidth(null);
-        int layerHeight = img.getHeight(null);
-        int drawX = (xo / scrollFactor) % layerWidth;
-        if (drawX > 0) drawX -= layerWidth;
+        int layerWidth = img.getWidth(null);     // Width of the background image
+        int layerHeight = img.getHeight(null);   // Height of the background image
 
+        // Calculate where to start drawing the image on screen
+        int drawX = (xo / scrollFactor) % layerWidth;
+        if (drawX > 0) drawX -= layerWidth; // Shift left to start drawing earlier if needed
+
+        // Tile the image across the screen to cover the full area
         for (int y = 0; y < getHeight(); y += layerHeight) {
             for (int x = drawX; x < getWidth(); x += layerWidth) {
-                g.drawImage(img, x, y, null);
+                g.drawImage(img, x, y, null); // Draw repeated background image
             }
         }
     }
 
-    public void checkOnScreen(Graphics2D g, Sprite s, int xo, int yo) {
+    /**
+     * Checks if a sprite is within the visible screen area.
+     * If visible, it is drawn and shown; otherwise, it is hidden.
+     *
+     * @param g  The graphics context used for drawing
+     * @param s  The sprite to check and draw
+     * @param xo The horizontal offset (camera X)
+     * @param yo The vertical offset (camera Y)
+     */
+    public void checkSpriteVisible(Graphics2D g, Sprite s, int xo, int yo) {
+        // Get the visible clipping bounds of the screen
         Rectangle rect = (Rectangle) g.getClip();
-        int xc, yc;
 
-        xc = (int) (xo + s.getX());
-        yc = (int) (yo + s.getY());
+        // Calculate the sprite's screen position
+        int xc = (int) (xo + s.getX());
+        int yc = (int) (yo + s.getY());
 
-        if (rect.contains(xc, yc))
-        {
-            s.show();
-            s.draw(g);
-        }
-        else
-        {
-            s.hide();
+        // Check if the sprite is within the visible area
+        if (rect.contains(xc, yc)) {
+            s.show();     // Make sprite visible
+            s.draw(g);    // Draw it to screen
+        } else {
+            s.hide();     // Hide if off-screen (optimization)
         }
     }
 
-    // Input Handling
-    public void keyPressed(KeyEvent e) {
-        int key = e.getKeyCode();
+    // === Input Handling ===
 
+    /**
+     * Handles key press events based on the current game state.
+     * Controls player movement, attacks, state transitions, and level switching.
+     *
+     * @param e The key event triggered by the user
+     */
+    public void keyPressed(KeyEvent e) {
+        int key = e.getKeyCode();  // Get the key that was pressed
+
+        // === In-Game Controls ===
         if (State == STATE.GAME) {
+            // Quit the game
             if (key == KeyEvent.VK_ESCAPE) stop();
+
+            // Player movement
             if (key == KeyEvent.VK_SPACE) jump = true;
             if (key == KeyEvent.VK_LEFT) left = true;
             if (key == KeyEvent.VK_RIGHT) right = true;
 
+            // === Player Attack ===
             if (key == KeyEvent.VK_A && !attacking) {
                 attacking = true;
 
+                // Play attack sound and set attack animation based on direction
                 new Sound("sounds/cyborg_attack.wav").start();
                 if (lastDirectionRight) {
                     player.setAnimation(attack_right);
@@ -610,48 +797,56 @@ public class Game extends GameCore implements ActionListener, MouseListener
                     player.setAnimation(attack_left);
                 }
 
+                // Delay before player can attack again
                 new java.util.Timer().schedule(
                         new java.util.TimerTask() {
                             @Override
                             public void run() {
                                 attacking = false;
                             }
-                        }, 500
+                        }, 500 // Wait 500ms before allowing another attack
                 );
             }
 
+            // Switch to Level 1
             if (key == KeyEvent.VK_1) {
                 levelNumber = 1;
                 init("level1.txt");
                 initialiseGame();
             }
 
+            // Switch to Level 2
             if (key == KeyEvent.VK_2) {
                 levelNumber = 2;
                 init("level2.txt");
                 initialiseGame();
             }
 
+            // Return to Start Screen
             if (key == KeyEvent.VK_Q) {
                 State = STATE.START;
             }
         }
 
+        // === Restart from Dead State ===
         if (State == STATE.DEAD && key == KeyEvent.VK_R) {
             State = STATE.LOADING;
-            loadingStartTime = System.currentTimeMillis();
-            // No need to call initialiseGame here — it will happen after loading
+            loadingStartTime = System.currentTimeMillis(); // Start loading timer
+
+            // Restart music from beginning
             if (midiSequencer != null) {
                 midiSequencer.setTickPosition(0); // Rewind
-                midiSequencer.start(); // Resume
+                midiSequencer.start();            // Play
             }
         }
 
+        // === Restart After Mission Success ===
         if (State == STATE.MISSION_SUCCESS && key == KeyEvent.VK_R) {
-            levelNumber = 1;
+            levelNumber = 1;  // Reset to level 1
             init("level1.txt");
             State = STATE.LOADING;
             loadingStartTime = System.currentTimeMillis();
+
             if (midiSequencer != null) {
                 midiSequencer.setTickPosition(0);
                 midiSequencer.start();
@@ -659,57 +854,99 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
     }
 
+    /**
+     * Handles key release events to stop movement or reset jump status.
+     *
+     * @param e The key event triggered when a key is released
+     */
     public void keyReleased(KeyEvent e) {
+        int key = e.getKeyCode(); // Get the released key code
 
-        int key = e.getKeyCode();
-
+        // Respond based on which key was released
         switch (key) {
+
+            // === ESC: Stop the game ===
             case KeyEvent.VK_ESCAPE -> stop();
+
+            // === SPACE: End jump input ===
             case KeyEvent.VK_SPACE -> {
-                jump = false;
-                canJump = true;
+                jump = false;     // Player is no longer holding jump
+                canJump = true;   // Allow jumping again
             }
+
+            // === LEFT: Stop moving left and begin deceleration ===
             case KeyEvent.VK_LEFT -> {
                 left = false;
                 decelerate = true;
             }
+
+            // === RIGHT: Stop moving right and begin deceleration ===
             case KeyEvent.VK_RIGHT -> {
                 right = false;
                 decelerate = true;
             }
+
+            // === Any other key: Do nothing ===
             default -> {
+                // No action for other keys
             }
         }
     }
 
+    /**
+     * Handles mouse click input during the START screen.
+     * Begins the transition to the game if the logo has fully faded in.
+     *
+     * @param e The mouse event triggered by the player
+     */
     @Override
     public void mousePressed(MouseEvent e) {
+        // Only respond to clicks on the START screen after fade-in is complete
         if (State == STATE.START && alpha >= 1.0f) {
             System.out.println("Mouse clicked: starting game...");
-            State = STATE.LOADING;
-            loadingStartTime = System.currentTimeMillis();
+            State = STATE.LOADING;                     // Transition to loading screen
+            loadingStartTime = System.currentTimeMillis(); // Start the loading timer
         }
     }
 
+    // === Unused MouseListener Methods ===
+    // These are required by the MouseListener interface but are not used in this game.
     @Override
-    public void mouseClicked(MouseEvent e) {}
-
-    @Override
-    public void mouseReleased(MouseEvent e) {}
-
-    @Override
-    public void mouseEntered(MouseEvent e) {}
+    public void mouseClicked(MouseEvent e) {
+        // Not used
+    }
 
     @Override
-    public void mouseExited(MouseEvent e) {}
+    public void mouseReleased(MouseEvent e) {
+        // Not used
+    }
 
-    // Player Movement
+    @Override
+    public void mouseEntered(MouseEvent e) {
+        // Not used
+    }
 
+    @Override
+    public void mouseExited(MouseEvent e) {
+        // Not used
+    }
+
+    // === Player Movement ===
+
+    /**
+     * Handles player movement input and physics including
+     * gravity, jumping, walking, deceleration, and animation updates.
+     *
+     * @param elapsed The elapsed time since the last update (in milliseconds)
+     */
     private void handlePlayerMovement(long elapsed) {
+        // Apply gravity to player
         applyGravity(elapsed);
 
+        // Do not process movement while attacking
         if (attacking) return;
 
+        // === Standing Idle Animation ===
         if (touchingGround) {
             if (lastDirectionRight) {
                 player.setAnimation(standing_right);
@@ -718,20 +955,25 @@ public class Game extends GameCore implements ActionListener, MouseListener
             }
         }
 
+        // === Handle Jumping ===
         if (jump && canJump && touchingGround) {
             performJump();
         }
 
+        // === Handle Horizontal Movement ===
         if (left) {
             moveLeft();
         }
         if (right) {
             moveRight();
         }
+
+        // === Apply Deceleration if Movement Stops ===
         if (decelerate) {
             applyDeceleration();
         }
 
+        // === Update Jumping/Falling Animation if Airborne ===
         updateAirborneAnimation();
     }
 
