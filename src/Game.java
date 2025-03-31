@@ -427,7 +427,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
             int loadingDuration = 5000;  // 5 seconds
             if (System.currentTimeMillis() - loadingStartTime >= loadingDuration) {
                 State = STATE.GAME;      // Transition to game
-                initialiseGame();        // Setup the level
+                initialiseGame();        // Set up the level
             }
             return;
         }
