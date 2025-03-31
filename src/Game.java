@@ -1002,8 +1002,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
                         enemyDeath.start();
                         enemy.stop();
                         enemy.hide();
-                        enemy.setX(0);
-                        enemy.setY(0);
+                        enemy.setX(-9999);
+                        enemy.setY(-9999);
                     } else {
                         collided = true;
                     }
