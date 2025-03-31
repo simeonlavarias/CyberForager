@@ -977,18 +977,27 @@ public class Game extends GameCore implements ActionListener, MouseListener
         updateAirborneAnimation();
     }
 
+    /**
+     * Applies gravity to the player by modifying vertical velocity over time.
+     *
+     * @param elapsed The time elapsed since the last frame (in milliseconds)
+     */
     private void applyGravity(long elapsed) {
         float gravity = 0.0010f;
         player.setVelocityY(player.getVelocityY() + (gravity * elapsed));
     }
 
+    /**
+     * Makes the player jump if allowed.
+     * Plays jump sound and sets vertical velocity upwards.
+     */
     private void performJump() {
         touchingGround = false;
         if (jumpsDone < 1) {
             if (player.getVelocityY() >= 0) {
                 new Sound("sounds/cyborg_jump.wav").start();
-                player.setVelocityY(-0.75f);
-                player.shiftY(-0.01f);
+                player.setVelocityY(-0.75f);  // Strong upward velocity
+                player.shiftY(-0.01f);        // Slight offset to break ground contact
                 jump = false;
                 jumpsDone++;
             }
@@ -997,197 +1006,261 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
     }
 
+    /**
+     * Moves the player to the left, unless blocked by a wall.
+     * Updates player velocity and animation.
+     */
     private void moveLeft() {
         postX = player.getX() + player.getImage().getWidth(null);
         postY = player.getY() + (float) player.getImage().getHeight(null) / 2;
 
         if (isWallBlocking(postX - 0.02f, postY)) {
-            player.setVelocityX(0);
+            player.setVelocityX(0);  // Stop if blocked
         } else {
-            player.setVelocityX(-0.2f);
-            lastDirectionRight = false;
+            player.setVelocityX(-0.2f);        // Move left
+            lastDirectionRight = false;        // Update last direction
             if (touchingGround) player.setAnimation(running_left);
         }
     }
 
+    /**
+     * Moves the player to the right, unless blocked by a wall.
+     * Updates player velocity and animation.
+     */
     private void moveRight() {
         postX = player.getX() + player.getImage().getWidth(null);
         postY = player.getY() + (float) player.getImage().getHeight(null) / 2;
 
         if (isWallBlocking(postX + 0.02f, postY)) {
-            player.setVelocityX(0);
+            player.setVelocityX(0);  // Stop if blocked
         } else {
-            player.setVelocityX(0.2f);
-            lastDirectionRight = true;
+            player.setVelocityX(0.2f);         // Move right
+            lastDirectionRight = true;         // Update last direction
             if (touchingGround) player.setAnimation(running_right);
         }
     }
 
+    /**
+     * Gradually slows down the player's horizontal movement when no key is pressed.
+     */
     private void applyDeceleration() {
-        player.setVelocityX(player.getVelocityX() * 0.9f);
+        player.setVelocityX(player.getVelocityX() * 0.9f);  // Reduce velocity
+
+        // If nearly stopped, halt completely
         if (Math.abs(player.getVelocityX()) <= 0.01f) {
             player.setVelocityX(0);
             decelerate = false;
         }
     }
 
+    /**
+     * Updates the player's animation based on whether they are jumping or falling.
+     * Only activates if the player is not touching the ground.
+     */
     private void updateAirborneAnimation() {
         if (!touchingGround) {
             if (player.getVelocityY() > 0) {
+                // Falling animation
                 player.setAnimation(player.getPlayerDirection() ? falling_right : falling_left);
             } else if (player.getVelocityY() < 0) {
+                // Jumping animation
                 player.setAnimation(player.getPlayerDirection() ? jumping_right : jumping_left);
             }
         }
     }
 
+    /**
+     * Checks if the tile at the given position is a blocking wall tile.
+     *
+     * @param x The x-coordinate in the tilemap
+     * @param y The y-coordinate in the tilemap
+     * @return True if the tile blocks movement; false otherwise
+     */
     private boolean isWallBlocking(float x, float y) {
         char tile = tmap.getTileChar((int)x, (int)y);
         return (tile == 'g' || tile == 'k' || tile == 'q' || tile == 'p' || tile == 'u' || tile == 'o');
     }
 
-    // Game Mechanics
+    // === Game Mechanics ===
+
+    /**
+     * Handles collisions between the player and enemies or the portal.
+     * If the player is attacking and touches an enemy, the enemy is defeated.
+     * If not attacking, the player takes damage and is knocked back.
+     * Also checks if the player reaches the portal to finish the level.
+     */
     private void handleSpriteCollisions() {
 
-        if (State == STATE.GAME)
-        {
+        // Only check collisions when in the GAME state
+        if (State == STATE.GAME) {
+
+            // Add all enemy sprites to a list for easier processing
             ArrayList<Sprite> enemies = new ArrayList<>();
             enemies.add(enemy1);
             enemies.add(enemy2);
             enemies.add(enemy3);
             enemies.add(enemy4);
 
-            boolean collided = false;
+            boolean collided = false; // Tracks if the player has collided with any enemy
 
+            // === Check for collisions with enemies ===
             for (Sprite enemy : enemies) {
+                // If there's a bounding box + circular collision with an enemy
                 if (boundingBoxCollision(player, enemy) && BoundingCircleCollision(player, enemy)) {
+
                     if (attacking) {
+                        // If attacking, defeat the enemy (play sound, hide, move off-screen)
                         Sound enemyDeath = new Sound("sounds/enemy_die.wav");
                         enemyDeath.start();
                         enemy.stop();
                         enemy.hide();
-                        enemy.setX(-9999);
+                        enemy.setX(-9999); // Move enemy off-screen
                         enemy.setY(-9999);
                     } else {
+                        // If not attacking, register as a damaging collision
                         collided = true;
                     }
                 }
             }
 
+            // === Handle player damage if they collided with an enemy ===
             if (collided) {
                 Sound damage = new Sound("sounds/cyborg_hurt.wav");
                 damage.start();
+
+                // Knockback logic based on direction player is facing
                 if (player.getPlayerDirection()) {
+                    // Facing right
                     player.setVelocityY(-0.2f);
                     player.setVelocityX(-0.2f);
                     player.setX(player.getX() - 10);
                     player.setY(player.getY() - 10);
                 } else {
+                    // Facing left
                     player.setVelocityY(0.2f);
                     player.setVelocityX(0.2f);
                     player.setX(player.getX() + 10);
                     player.setY(player.getY() - 10);
                 }
-                lifeRemaining--;
+
+                lifeRemaining--; // Reduce player's life
             }
 
-            if ((BoundingCircleCollision(player, portal)) && portalState.equals("Open"))
-            {
+            // === Check if player touches the portal and the portal is open ===
+            if ((BoundingCircleCollision(player, portal)) && portalState.equals("Open")) {
                 Sound levelComplete = new Sound("sounds/level_transition.wav");
                 levelComplete.start();
-                finishLevel();
+                finishLevel(); // Transition to next level or mission success
             }
         }
     }
 
+    /**
+     * Handles interactions between a sprite and the tile map.
+     * Detects and responds to collisions with ground, lava, coins, hearts, and level objectives.
+     *
+     * @param s The sprite being checked for tile collisions
+     */
     public void handleTileMapCollisions(Sprite s) {
+        // Convert sprite's position into tile coordinates
         int tileX = (int) (s.getX() / tmap.getTileWidth());
         int tileY = (int) ((s.getY() + s.getHeight()) / tmap.getTileHeight());
 
+        // === Collision with solid ground tiles ===
         if (tmap.getTileChar(tileX, tileY) == 'G' || tmap.getTileChar(tileX, tileY) == 'T' ||
                 tmap.getTileChar(tileX, tileY) == 'B' || tmap.getTileChar(tileX, tileY) == 'D' ||
                 tmap.getTileChar(tileX, tileY) == 'L' || tmap.getTileChar(tileX, tileY) == 'R' ||
                 tmap.getTileChar(tileX, tileY) == 'Q' || tmap.getTileChar(tileX, tileY) == 'W' ||
                 tmap.getTileChar(tileX, tileY) == ']' || tmap.getTileChar(tileX, tileY) == '\\' ||
                 tmap.getTileChar(tileX, tileY) == '/' || tmap.getTileChar(tileX, tileY) == '<' ||
-                tmap.getTileChar(tileX, tileY) == '-' || tmap.getTileChar(tileX, tileY) == '>')
-        {
-            if (s.getVelocityY() > 0)
-            {
-                s.setVelocityY(0);
+                tmap.getTileChar(tileX, tileY) == '-' || tmap.getTileChar(tileX, tileY) == '>') {
+
+            if (s.getVelocityY() > 0) {
+                s.setVelocityY(0); // Stop downward movement
             }
+
+            // Snap sprite to just above the tile it landed on
             s.setY((float) (tileY * tmap.getTileHeight()) - s.getHeight());
-            if (s.equals(player))
-            {
+
+            if (s.equals(player)) {
+                // Allow jumping again if this is the player
                 jumpsDone = 0;
                 touchingGround = true;
             }
         }
 
-        if (tmap.getTileChar(tileX, tileY) == 'V')
-        {
-            if (s.equals(player))
-            {
+        // === Collision with lava tile 'V' ===
+        if (tmap.getTileChar(tileX, tileY) == 'V') {
+            if (s.equals(player)) {
+                // Player takes damage and knockback
                 Sound damage = new Sound("sounds/cyborg_hurt.wav");
                 damage.start();
-                if (player.getPlayerDirection())
-                {
+
+                if (player.getPlayerDirection()) {
                     player.setVelocityY(-0.2f);
                     player.setVelocityX(-0.2f);
                     player.setX(player.getX() - 10);
-                }
-                else
-                {
+                } else {
                     player.setVelocityY(0.2f);
                     player.setVelocityX(0.2f);
                     player.setX(player.getX() + 10);
                 }
+
                 player.setY(player.getY() - 10);
                 lifeRemaining--;
 
             } else {
+                // Enemies stop and disappear in lava
                 s.stop();
                 s.hide();
             }
         }
 
-        if ((tmap.getTileChar(tileX, tileY - 1) == '1') && s.equals(player))
-        {
+        // === Coin collection: tile '1' ===
+        if ((tmap.getTileChar(tileX, tileY - 1) == '1') && s.equals(player)) {
             Sound collect = new Sound("sounds/coin_collect.wav");
             collect.start();
-            coinsCollected++;
-            tmap.setTileChar('.', tileX, tileY - 1);
+            coinsCollected++;  // Increment player's coin count
+            tmap.setTileChar('.', tileX, tileY - 1);  // Remove coin from map
         }
 
-        if (coinsCollected == totalCoins)
-        {
-            portalState = ("Open");
+        // === Open portal when all coins collected ===
+        if (coinsCollected == totalCoins) {
+            portalState = "Open";
             portal.show();
         }
-        if ((tmap.getTileChar(tileX, tileY - 1) == 'H') && s.equals(player))
-        {
-            if (lifeRemaining < 3)
-            {
-                tmap.setTileChar('.', tileX, tileY - 1);
-                lifeRemaining++;
+
+        // === Heart pickup: tile 'H' ===
+        if ((tmap.getTileChar(tileX, tileY - 1) == 'H') && s.equals(player)) {
+            if (lifeRemaining < 3) {
+                tmap.setTileChar('.', tileX, tileY - 1); // Remove heart from map
+                lifeRemaining++; // Restore one life
             }
         }
     }
 
+    /**
+     * Checks for collisions with solid tiles surrounding the sprite
+     * (top, bottom, left, and right). Prevents movement through them.
+     *
+     * @param sprite the sprite to check collisions for
+     */
     public void checkTileCollision(Sprite sprite) {
 
-        xT = (int) ((sprite.getX() / tmap.getTileWidth()) + 0.5);
+        // === Determine tile positions around the sprite ===
+        xT = (int) ((sprite.getX() / tmap.getTileWidth()) + 0.5); // tile above
         yT = (int) (sprite.getY() / tmap.getTileHeight());
 
-        xB = (int) (sprite.getX() / tmap.getTileWidth() + 0.5);
+        xB = (int) (sprite.getX() / tmap.getTileWidth() + 0.5); // tile below
         yB = (int) ((sprite.getY() + sprite.getHeight()) / tmap.getTileHeight() - 1.0);
 
-        xR = (int) (sprite.getX() / tmap.getTileWidth() + 0.5);
+        xR = (int) (sprite.getX() / tmap.getTileWidth() + 0.5); // tile to the right
         yR = (int) ((sprite.getY() + sprite.getHeight()) / tmap.getTileHeight() - 0.75);
 
-        xL = (int) (sprite.getX() / tmap.getTileWidth());
+        xL = (int) (sprite.getX() / tmap.getTileWidth()); // tile to the left
         yL = (int) ((sprite.getY() + sprite.getHeight()) / tmap.getTileHeight() - 0.75);
 
+        // === Collision from below (head hitting ceiling) ===
         if ((tmap.getTileChar(xT, yT) == 'G' || tmap.getTileChar(xT, yT) == 'T' ||
                 tmap.getTileChar(xT, yT) == 'B' || tmap.getTileChar(xT, yT) == 'D' ||
                 tmap.getTileChar(xT, yT) == 'L' || tmap.getTileChar(xT, yT) == 'R' ||
@@ -1196,13 +1269,13 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 tmap.getTileChar(xT, yT) == '/' || tmap.getTileChar(xT, yT) == '<' ||
                 tmap.getTileChar(xT, yT) == '-' || tmap.getTileChar(xT, yT) == '>') &&
                 sprite.getVelocityY() > 0) {
-            sprite.setVelocityY(0);
-            canJump = false;
+            sprite.setVelocityY(0); // Stop upward movement
+            canJump = false;        // Prevent jump if under a block
+        } else {
+            canJump = true; // Allow jump if nothing overhead
         }
-        else
-        {
-            canJump = true;
-        }
+
+        // === Collision from the right ===
         while ((tmap.getTileChar(xR, yR) == 'G' || tmap.getTileChar(xR, yR) == 'T' ||
                 tmap.getTileChar(xR, yR) == 'B' || tmap.getTileChar(xR, yR) == 'D' ||
                 tmap.getTileChar(xR, yR) == 'L' || tmap.getTileChar(xR, yR) == 'R' ||
@@ -1211,9 +1284,11 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 tmap.getTileChar(xR, yR) == '/' || tmap.getTileChar(xR, yR) == '<' ||
                 tmap.getTileChar(xR, yR) == '-' || tmap.getTileChar(xR, yR) == '>') &&
                 sprite.getVelocityX() > 0) {
-            sprite.setVelocityX(0);
-            sprite.setX(xR * tmap.getTileWidth() - sprite.getImage().getWidth(null));
+            sprite.setVelocityX(0); // Stop rightward movement
+            sprite.setX(xR * tmap.getTileWidth() - sprite.getImage().getWidth(null)); // Snap to left of wall
         }
+
+        // === Collision from the left ===
         while ((tmap.getTileChar(xL, yL) == 'G' || tmap.getTileChar(xL, yL) == 'T' ||
                 tmap.getTileChar(xL, yL) == 'B' || tmap.getTileChar(xL, yL) == 'D' ||
                 tmap.getTileChar(xL, yL) == 'L' || tmap.getTileChar(xL, yL) == 'R' ||
@@ -1222,9 +1297,11 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 tmap.getTileChar(xL, yL) == '/' || tmap.getTileChar(xL, yL) == '<' ||
                 tmap.getTileChar(xL, yL) == '-' || tmap.getTileChar(xL, yL) == '>') &&
                 sprite.getVelocityX() < 0) {
-            sprite.setVelocityX(0);
-            sprite.setX(xL * tmap.getTileWidth() + tmap.getTileWidth());
+            sprite.setVelocityX(0); // Stop leftward movement
+            sprite.setX(xL * tmap.getTileWidth() + tmap.getTileWidth()); // Snap to right of wall
         }
+
+        // === Collision from above (landing on a tile) ===
         if (tmap.getTileChar(xB, yB) == 'G' || tmap.getTileChar(xB, yB) == 'T' ||
                 tmap.getTileChar(xB, yB) == 'B' || tmap.getTileChar(xB, yB) == 'D' ||
                 tmap.getTileChar(xB, yB) == 'L' || tmap.getTileChar(xB, yB) == 'R' ||
@@ -1232,91 +1309,133 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 tmap.getTileChar(xB, yB) == ']' || tmap.getTileChar(xB, yB) == '\\' ||
                 tmap.getTileChar(xB, yB) == '/' || tmap.getTileChar(xB, yB) == '<' ||
                 tmap.getTileChar(xB, yB) == '-' || tmap.getTileChar(xB, yB) == '>') {
-            sprite.setVelocityY(0);
-            sprite.shiftY(2);
+            sprite.setVelocityY(0); // Stop falling
+            sprite.shiftY(2);       // Slightly push up to avoid re-collision
         }
     }
 
+    /**
+     * Handles collision with the screen or map boundaries to keep the sprite within bounds.
+     * Applies bounce on bottom edge, and clamps left/right positions.
+     *
+     * @param s    The sprite to constrain
+     * @param tmap The tile map to get screen size from
+     */
     public void handleScreenEdge(Sprite s, TileMap tmap) {
+        // === Bottom edge collision ===
         float bottomDifference = s.getY() + s.getHeight() - tmap.getPixelHeight();
-        if (bottomDifference > 0)
-        {
+        if (bottomDifference > 0) {
             s.setY(tmap.getPixelHeight() - s.getHeight() - (int)(bottomDifference));
-            s.setVelocityY(-s.getVelocityY() * 0.75f); // bounce up
+            s.setVelocityY(-s.getVelocityY() * 0.75f); // Bounce upward with dampening
         }
 
-        if (s.getX() < 0)
-        {
-            s.setX(0);
-            s.setVelocityX(0);
+        // === Left edge collision ===
+        if (s.getX() < 0) {
+            s.setX(0);             // Lock to screen's left
+            s.setVelocityX(0);     // Stop leftward movement
         }
 
+        // === Right edge collision ===
         float rightDifference = s.getX() + s.getWidth() - tmap.getPixelWidth();
-        if (rightDifference > 0)
-        {
-            s.setX(tmap.getPixelWidth() - s.getWidth() - (int)(rightDifference));
-            s.setVelocityX(0);
+        if (rightDifference > 0) {
+            s.setX(tmap.getPixelWidth() - s.getWidth() - (int)(rightDifference)); // Lock to right edge
+            s.setVelocityX(0); // Stop rightward movement
         }
     }
 
+    /**
+     * Resets enemy states and visibility based on the current level.
+     * Sets animations, velocities, directions, and handles visibility for enemy4 (only appears in level 2).
+     */
     private void resetEnemies() {
+        // === Reset Enemy 1 ===
         enemy1.show();
         enemy1.setAnimation(enemy_running_right);
         enemy1.setVelocityX(0);
         enemy1.setVelocityY(0);
 
+        // === Reset Enemy 2 ===
         enemy2.show();
         enemy2.setAnimation(enemy_running_right);
         enemy2.setVelocityX(0);
         enemy2.setVelocityY(0);
 
+        // === Reset Enemy 3 ===
         enemy3.show();
         enemy3.setAnimation(enemy_running_right);
         enemy3.setVelocityX(0);
         enemy3.setVelocityY(0);
 
+        // === Reset Enemy 4 (common properties, conditional visibility below) ===
         enemy4.setAnimation(enemy_running_right);
         enemy4.setVelocityX(0);
         enemy4.setVelocityY(0);
 
+        // === Set all enemy directions to right ===
         enemy1.setDirection(true);
         enemy2.setDirection(true);
         enemy3.setDirection(true);
         enemy4.setDirection(true);
 
+        // === Show or hide enemy4 depending on the level ===
         if (levelNumber == 2) {
-            enemy4.show();
+            enemy4.show(); // Only visible in Level 2
         } else {
-            enemy4.hide();
+            enemy4.hide(); // Hidden and moved offscreen in Level 1
             enemy4.setX(-9999);
             enemy4.setY(-9999);
         }
     }
 
-    // Collision Detection
+
+    // === Collision Detection ===
+
+    /**
+     * Checks for rectangular (AABB) collision between two sprites using bounding boxes.
+     * Shrinks the boxes slightly to avoid early collision triggers (e.g. from transparent edges).
+     *
+     * @param s1 First sprite
+     * @param s2 Second sprite
+     * @return true if the bounding rectangles intersect
+     */
     public boolean boundingBoxCollision(Sprite s1, Sprite s2) {
+        // Create smaller rectangles around both sprites
         Rectangle r1 = new Rectangle((int) s1.getX() + 5, (int) s1.getY() + 5, s1.getWidth() - 10, s1.getHeight() - 10);
         Rectangle r2 = new Rectangle((int) s2.getX() + 5, (int) s2.getY() + 5, s2.getWidth() - 10, s2.getHeight() - 10);
+
+        // Check if they intersect
         return r1.intersects(r2);
     }
 
+    /**
+     * Checks for circular collision between two sprites using simplified radius overlap.
+     * This method gives smoother, more forgiving collisions — useful for roundish sprites.
+     *
+     * @param one First sprite
+     * @param two Second sprite
+     * @return true if the distance between centers is less than the sum of radii
+     */
     public boolean BoundingCircleCollision(Sprite one, Sprite two) {
+        // Calculate distance between centers of the sprites
         int dx = ((int) one.getX() + one.getWidth() / 2) - ((int) two.getX() + two.getWidth() / 2);
         int dy = ((int) one.getY() + one.getHeight() / 2) - ((int) two.getY() + two.getHeight() / 2);
 
+        // Calculate "effective radius" for each sprite (40% of width)
         double r1 = one.getWidth() * 0.4;
         double r2 = two.getWidth() * 0.4;
 
+        // Compare squared distances (avoids costly square root)
         double distanceSquared = dx * dx + dy * dy;
         double radiusSum = r1 + r2;
 
         return distanceSquared < radiusSum * radiusSum;
     }
 
+
     /**
-     * The code below was only used to visualize which tiles are being collided with
-     * during development. I will not remove it because the assignment does not permit
-     * us to remove methods, so I will just leave it here.
+     * This method was only used to visualize which tiles are being collided with during development.
+     * I will not remove it because the assignment does not permit us to remove methods.
+     * As such, I will just leave it here.
      */
     public void drawCollidedTiles(Graphics2D g, TileMap map, int xOffset, int yOffset) {
 //        if (collidedTiles.size() > 0)
@@ -1332,10 +1451,18 @@ public class Game extends GameCore implements ActionListener, MouseListener
 //        }
     }
 
-    // UI/State Updates
+    // === UI/State Updates ===
+
+    /**
+     * Updates the alpha (transparency) of the start screen logo to create a fade-in effect.
+     * Called repeatedly during the START state to gradually reveal the logo.
+     */
     private void updateStarter() {
+        // If we are in the fade-in phase and alpha is not fully opaque yet
         if (fadingIn && alpha < 1.0f) {
-            alpha += 0.01f;
+            alpha += 0.01f; // Gradually increase transparency
+
+            // Clamp alpha to 1.0 and stop fading once fully visible
             if (alpha >= 1.0f) {
                 alpha = 1.0f;
                 fadingIn = false;
@@ -1343,41 +1470,72 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
     }
 
-    // Helpers
+    // === Helpers ===
+
+    /**
+     * Loads an image from the given path and scales it to 800x600.
+     * This ensures all background images are consistent in size.
+     *
+     * @param path The file path to the image.
+     * @return A BufferedImage scaled to screen size, or null if loading fails.
+     */
     private BufferedImage loadAndScaleImage(String path) {
         try {
+            // Load image asynchronously
             Image img = Toolkit.getDefaultToolkit().getImage(path);
             MediaTracker tracker = new MediaTracker(new java.awt.Container());
             tracker.addImage(img, 0);
-            tracker.waitForID(0);
+            tracker.waitForID(0); // Wait until image is fully loaded
 
+            // Create a blank image with transparency and draw the scaled image onto it
             BufferedImage scaled = new BufferedImage(800, 600, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = scaled.createGraphics();
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR); // Smooth scaling
             g2d.drawImage(img, 0, 0, 800, 600, null);
             g2d.dispose();
             return scaled;
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Print error details
             return null;
         }
     }
+
+    /**
+     * Loads an animation from a sprite sheet located in the animations folder.
+     *
+     * @param filename       The filename of the sprite sheet.
+     * @param frames         The number of frames in the animation.
+     * @param frameDuration  How long each frame lasts in milliseconds.
+     * @return A fully loaded Animation object.
+     */
     private Animation loadAnimation(String filename, int frames, int frameDuration) {
         Animation anim = new Animation();
         anim.loadAnimationFromSheet("images/Animations/" + filename, frames, 1, frameDuration);
         return anim;
     }
+
+    /**
+     * Required override from ActionListener. Currently unused.
+     * Useful if you plan to trigger timed UI actions or add menus.
+     *
+     * @param e The action event (not used here).
+     */
     @Override
     public void actionPerformed(ActionEvent e) {
-
+        // No action required at this time
     }
 
-    // Enums
+    // === Enums ===
+
+    /**
+     * Represents the different states the game can be in.
+     * This enum helps manage transitions between screens and behaviors.
+     */
     public enum STATE {
-        START,
-        LOADING,
-        GAME,
-        DEAD,
-        MISSION_SUCCESS
+        START,           // Initial start screen with logo and fade-in
+        LOADING,         // Brief loading screen shown before the level begins
+        GAME,            // Main gameplay state
+        DEAD,            // Game over screen when player loses all lives
+        MISSION_SUCCESS  // Screen shown after completing all levels
     }
 }
