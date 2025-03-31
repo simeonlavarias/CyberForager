@@ -13,17 +13,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-// Game demonstrates how we can override the GameCore class
-// to create our own 'game'. We usually need to implement at
-// least 'draw' and 'update' (not including any local event handling)
-// to begin the process. You should also add code to the 'init'
-// method that will initialise event handlers etc. By default GameCore
-// will handle the 'Escape' key to quit the game but you should
-// override this with your own event handler.
-
-/**
- * @author David Cairns
- */
 public class Game extends GameCore implements ActionListener, MouseListener
 {
     // width of the screen
@@ -32,7 +21,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private final int screenHeight = 600;
     private Sequencer midiSequencer;
 
-    // Game state flags
+    // Game variables
     private boolean jump = false;
     private boolean left = false;
     private boolean right = false;
@@ -42,13 +31,12 @@ public class Game extends GameCore implements ActionListener, MouseListener
     private boolean lastDirectionRight = true; // Tracks last direction (true = right, false = left)
     private boolean attacking = false; // Is the player attacking?
     private long loadingStartTime = 0;
-    private final int loadingDuration = 4000; // in milliseconds
 
 
     // Integer values
     private int jumpsDone = 0; // no. jumps performed this jump
     private int levelNumber = 1; // the current level the player is on
-    private int coinsCollected = 0; // the number of gems the player has collected
+    private int coinsCollected = 0; // the number of coins the player has collected
     private int totalCoins = 0; // the total number of gems in the level
     private int lifeRemaining = 3; // the amount of life the player has remaining
 
@@ -86,7 +74,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
     public float postY;
 
     // Images
-    private Image[] parallaxLayers; // Array to store multiple background layers
+    private Image[] parallaxLayersLevel1; // Arrays to store parallax layers
+    private Image[] parallaxLayersLevel2;
     private Image heart1; // 3 individual heart images for the player's remaining life
     private Image heart2;
     private Image heart3;
@@ -123,16 +112,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
      * @param args The list of parameters this program might use (ignored)
      */
     public static void main(String[] args) {
-
         Game game = new Game(); // Create a new instance of Game
-
-        game.levelNumber = 2; // Start directly on level 2
-        game.init("level2/level2.txt"); // Load level 2
-        State = Game.STATE.GAME; // Go directly to gameplay state
-        game.initialiseGame(); // Initialize level data
-
-//        Game game = new Game(); // Create a new instance of Game
-//        game.init("level1/level1.txt"); // load the first map
+        game.init("level1.txt"); // load the first map
         try {
             game.midiSequencer = MidiSystem.getSequencer();
             game.midiSequencer.open();
@@ -163,9 +144,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         if (levelNumber == 1) // if on level 1
         {
-            // Load the tile map and print it out so we can check it is valid
-            tmap.loadMap("maps/level1", "level1.txt");
-
             totalCoins = 15; // assign number of gems in this level
 
             player.setX(tmap.getTileXC(3, 6)); // get x & y coordinates of this tile
@@ -199,8 +177,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
             // set the spawn points of the red and green flag (start and finish)
             portal.setAnimation(portalAnimLevel1);
-            portal.setX(tmap.getTileXC(61, 1));
-            portal.setY(tmap.getTileYC(61, 1));
+            portal.setX(tmap.getTileXC(61, 3));
+            portal.setY(tmap.getTileYC(61, 3));
         }
         else if (levelNumber == 2) // if on level 2
         {
@@ -209,9 +187,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
                 System.out.println("ERROR: level2.txt file not found at " + file.getAbsolutePath());
             }
             // similar setup as above
-
-            // Load the tile map and print it out so we can check it is valid
-            tmap.loadMap("maps/level2", "level2.txt");
 
             totalCoins = 30;
 
@@ -243,12 +218,15 @@ public class Game extends GameCore implements ActionListener, MouseListener
             enemy4.setSpawnY(tmap.getTileYC(53, 15));
             enemy4.setMinPatrol(enemy4.getSpawnX() - 10);
             enemy4.setMaxPatrol(enemy4.getSpawnX() + 10);
+            enemy4.setX(enemy4.getSpawnX());
+            enemy4.setY(enemy4.getSpawnY());
             enemy4.show();
 
             portal.setAnimation(portalAnimLevel2);
             portal.setX(tmap.getTileXC(31, 11));
             portal.setY(tmap.getTileYC(31, 11));
         }
+        resetEnemies();
     }
 
     /**
@@ -259,18 +237,30 @@ public class Game extends GameCore implements ActionListener, MouseListener
     public void init(String map)
     {
         logo = new ImageIcon("images/Logo/cyber_forager_logo.png").getImage();
+        if (levelNumber == 1) {
+            tmap.loadMap("maps/level1", map);
+        } else if (levelNumber == 2) {
+            tmap.loadMap("maps/level2", map);
+        }
 
-        //background = loadImage("images/background.png").getScaledInstance(728, 455, Image.SCALE_DEFAULT);
-        // Load tile map
-        tmap.loadMap("maps", map);
+        System.out.println("🗺️ [Game] Current levelNumber = " + levelNumber);
 
-        // Load multiple parallax backgrounds and scale to 2x screen width
-        parallaxLayers = new Image[]{
-                loadAndScaleImage("images/1.png"),
-                loadAndScaleImage("images/2.png"),
-                loadAndScaleImage("images/3.png"),
-                loadAndScaleImage("images/4.png"),
-                loadAndScaleImage("images/5.png")
+        // Load background layers for Level 1
+        parallaxLayersLevel1 = new Image[]{
+                loadAndScaleImage("images/level1_bg/1.png"),
+                loadAndScaleImage("images/level1_bg/2.png"),
+                loadAndScaleImage("images/level1_bg/3.png"),
+                loadAndScaleImage("images/level1_bg/4.png"),
+                loadAndScaleImage("images/level1_bg/5.png")
+        };
+
+        // Load background layers for Level 2
+        parallaxLayersLevel2 = new Image[]{
+                loadAndScaleImage("images/level2_bg/1.png"),
+                loadAndScaleImage("images/level2_bg/2.png"),
+                loadAndScaleImage("images/level2_bg/3.png"),
+                loadAndScaleImage("images/level2_bg/4.png"),
+                loadAndScaleImage("images/level2_bg/5.png")
         };
 
         // === Player Animations ===
@@ -335,6 +325,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
 
         if (State == STATE.LOADING) {
+            // in milliseconds
+            int loadingDuration = 5000;
             if (System.currentTimeMillis() - loadingStartTime >= loadingDuration) {
                 State = STATE.GAME;
                 initialiseGame();
@@ -415,7 +407,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
             {
                 Sound sound = new Sound("sounds/robot_death.wav"); // load fail/death sound
                 sound.start();
-//                sound.echo("robot_death.wav");
                 System.out.println("You died!"); // inform user that they died
                 levelNumber = 1; // reset level number to 1
                 resetGame(); // reset all variables
@@ -563,12 +554,13 @@ public class Game extends GameCore implements ActionListener, MouseListener
         int xo = (int) -player.getX() + 150;
         int yo = (int) -player.getY() + 300;
 
-        // New parallax drawing using helper method
-        drawParallaxLayer(g, parallaxLayers[0], xo, 12);
-        drawParallaxLayer(g, parallaxLayers[1], xo, 9);
-        drawParallaxLayer(g, parallaxLayers[2], xo, 6);
-        drawParallaxLayer(g, parallaxLayers[3], xo, 3);
-        drawParallaxLayer(g, parallaxLayers[4], xo, 2); // Optional: add a fifth layer
+        Image[] currentBackground = (levelNumber == 1) ? parallaxLayersLevel1 : parallaxLayersLevel2;
+
+        drawParallaxLayer(g, currentBackground[0], xo, 12);
+        drawParallaxLayer(g, currentBackground[1], xo, 9);
+        drawParallaxLayer(g, currentBackground[2], xo, 6);
+        drawParallaxLayer(g, currentBackground[3], xo, 3);
+        drawParallaxLayer(g, currentBackground[4], xo, 2);
 
         if (State == STATE.LOADING) {
             renderLoading(g);
@@ -585,6 +577,13 @@ public class Game extends GameCore implements ActionListener, MouseListener
             sprites.add(enemy3);
             sprites.add(enemy4);
 
+            // Draw the tile map (main game world).
+            tmap.draw(g, xo, yo);
+
+            for (TileMap.DecorativeTile dt : tmap.getDecorativeTiles()) {
+                g.drawImage(dt.image, dt.x + xo, dt.y + yo, null);
+            }
+
             for (Sprite s : sprites) {
                 s.setOffsets(xo, yo);
                 checkOnScreen(g, s, xo, yo);
@@ -593,9 +592,6 @@ public class Game extends GameCore implements ActionListener, MouseListener
             // Set offsets and draw the flags.
             portal.setOffsets(xo, yo);
             portal.draw(g);
-
-            // Draw the tile map (main game world).
-            tmap.draw(g, xo, yo);
 
             // Draw score and flag status.
             g.setColor(Color.white);
@@ -702,6 +698,40 @@ public class Game extends GameCore implements ActionListener, MouseListener
         }
     }
 
+    private void resetEnemies() {
+        enemy1.show();
+        enemy1.setAnimation(enemy_running_right);
+        enemy1.setVelocityX(0);
+        enemy1.setVelocityY(0);
+
+        enemy2.show();
+        enemy2.setAnimation(enemy_running_right);
+        enemy2.setVelocityX(0);
+        enemy2.setVelocityY(0);
+
+        enemy3.show();
+        enemy3.setAnimation(enemy_running_right);
+        enemy3.setVelocityX(0);
+        enemy3.setVelocityY(0);
+
+        enemy4.setAnimation(enemy_running_right);
+        enemy4.setVelocityX(0);
+        enemy4.setVelocityY(0);
+
+        enemy1.setDirection(true);
+        enemy2.setDirection(true);
+        enemy3.setDirection(true);
+        enemy4.setDirection(true);
+
+        if (levelNumber == 2) {
+            enemy4.show(); // only visible in level 2
+        } else {
+            enemy4.hide();
+            enemy4.setX(-9999);
+            enemy4.setY(-9999);
+        }
+    }
+
     // Method to reset the variables at the end of the game
     public void resetGame()
     {
@@ -746,6 +776,8 @@ public class Game extends GameCore implements ActionListener, MouseListener
         portal.setAnimation(portalAnimLevel1);
         portal.setX(tmap.getTileXC(61, 1));
         portal.setY(tmap.getTileYC(61, 1));
+
+        resetEnemies();
     }
 
     /**
@@ -1043,13 +1075,13 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
             if (key == KeyEvent.VK_1) {
                 levelNumber = 1;
-                init("level1/level1.txt");
+                init("level1.txt");
                 initialiseGame();
             }
 
             if (key == KeyEvent.VK_2) {
                 levelNumber = 2;
-                init("level2/level2.txt");
+                init("level2.txt");
                 initialiseGame();
             }
 
@@ -1070,7 +1102,7 @@ public class Game extends GameCore implements ActionListener, MouseListener
 
         if (State == STATE.MISSION_SUCCESS && key == KeyEvent.VK_R) {
             levelNumber = 1;
-            init("level1/level1.txt");
+            init("level1.txt");
             State = STATE.LOADING;
             loadingStartTime = System.currentTimeMillis();
             if (midiSequencer != null) {
@@ -1102,11 +1134,12 @@ public class Game extends GameCore implements ActionListener, MouseListener
     {
         if (levelNumber == 1)  // if on level 1
         {
-            levelNumber++; // increment level number
+            levelNumber = 2; // increment level number
             System.out.println("Level 1 Done!"); // inform user they successfully finished the level
             coinsCollected = 0; // reset the collected gems variable (otherwise the next level will instantly spawn the green flag)
             portalState = "Closed"; // reset flag status
-            init("level2/level2.txt"); // load level 2
+            System.out.println("🚀 [Game] Transitioning to Level 2...");
+            init("level2.txt"); // load level 2
             initialiseGame(); // re-initialise the game
         }
         else if (levelNumber == 2) {
